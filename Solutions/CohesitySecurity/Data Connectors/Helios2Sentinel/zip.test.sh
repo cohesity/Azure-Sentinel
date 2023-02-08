@@ -4,9 +4,16 @@ SCRIPTPATH=$(dirname "$SCRIPT")
 cd "$SCRIPTPATH"
 
 ./zip.sh
-unzip ./Package/IncidentProducer.zip -d IncidentProducer.output1
-git checkout ./Package/IncidentProducer.zip
-unzip ./Package/IncidentProducer.zip -d IncidentProducer.output2
-kdiff3 IncidentProducer.output1 IncidentProducer.output2
+
+UNZIP_DIR="./unzip.output/"
+
+rm -fr "$UNZIP_DIR"
+unzip ./Package/IncidentProducer.zip -d "$UNZIP_DIR"
+kdiff3 "$UNZIP_DIR"  ./IncidentProducer/bin/Release/net6.0/publish.bak/
+
+rm -fr "$UNZIP_DIR"
+unzip ./Package/IncidentConsumer.zip -d "$UNZIP_DIR"
+kdiff3 "$UNZIP_DIR"  ./IncidentConsumer/bin/Release/net6.0/publish.bak/
+
 git clean -fd
 git checkout ./Package/*.zip

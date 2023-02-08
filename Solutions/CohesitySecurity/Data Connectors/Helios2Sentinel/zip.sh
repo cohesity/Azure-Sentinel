@@ -3,23 +3,21 @@ SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 cd "$SCRIPTPATH"
 
-TEMP_DIR="OUTPUT_DIR"
+dotnet clean
+dotnet publish -c Release
+PUBLISH_DIR="./bin/Release/net6.0/publish/"
 
 find "$SCRIPTPATH"/ -type f -iname \*.csproj | while read ss; \
 do \
-    echo "ss --> $ss"
     SCRIPT=$(realpath "$ss")
-    cd $(dirname "$SCRIPT")
+    CSPROJDIR=$(dirname "$SCRIPT")
+    cd "$CSPROJDIR"
 
     filename=$(basename -- "$ss")
     extension="${filename##*.}"
     filename="${filename%.*}"
-    echo "filename --> $filename"
-    dotnet clean
-    dotnet publish -o "$TEMP_DIR"
-    cd ./"$TEMP_DIR"/
+    cd "$PUBLISH_DIR"
     zip -r ./"$filename".zip ./*
-    mv -fv ./"$filename".zip ../Package/
+    mv -fv ./"$filename".zip "$CSPROJDIR/../Package/"
     cd ../
-    rm -fr ./"$TEMP_DIR"/
 done
