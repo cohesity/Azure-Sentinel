@@ -1,4 +1,7 @@
 #!/bin/zsh
+# This script is used to publish the 2 function apps into 2 zip files, for later azure deployment.
+# no input needed, and it could be run from any where.
+
 SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 cd "$SCRIPTPATH"
