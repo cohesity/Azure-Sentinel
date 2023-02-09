@@ -1,4 +1,4 @@
-#!/bin/zsh
+#!/bin/bash
 # This script is used to publish the 2 function apps into 2 zip files, for later azure deployment.
 # no input needed, and it could be run from any where.
 
@@ -22,5 +22,4 @@ do \
     cd "$PUBLISH_DIR"
     zip -r ./"$filename".zip ./*
     mv -fv ./"$filename".zip "$CSPROJDIR/../Package/"
-    cd ../
 done
