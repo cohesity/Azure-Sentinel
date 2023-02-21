@@ -5,10 +5,11 @@ cd "$SCRIPTPATH"
 
 . ../json_parser.sh
 
+../workspace_create.sh
+
 az deployment group create \
     --name ExampleDeployment \
     --resource-group "$resourcegroup" \
     --template-file ./mainTemplate.json \
-    --parameters EmailID=cohesity-siem@outlook.com \
-    --parameters connector1-name=$(uuidgen) \
-    --parameters location=eastasia
+    --parameters workspace-location=eastasia \
+    --parameters workspace="$workspacename"

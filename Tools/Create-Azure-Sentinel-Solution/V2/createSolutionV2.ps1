@@ -1,7 +1,8 @@
 Import-Module powershell-yaml
 
 $jsonConversionDepth = 50
-$path = "$PSScriptRoot\input"
+$RepoRoot = Split-path -Parent $PSScriptRoot | Split-Path -Parent | Split-Path -Parent
+$path = Join-Path -Path $PSScriptRoot -ChildPath "input"
 $mainTemplateArtifact = [PSCustomObject]@{
     name = "DefaultTemplate";
     type = "Template"
@@ -133,6 +134,7 @@ foreach ($inputFile in $(Get-ChildItem $path)) {
 
     $contentToImport = Get-Content -Raw $inputJsonPath | Out-String | ConvertFrom-Json
     $basePath = $(if ($contentToImport.BasePath) { $contentToImport.BasePath + "/" } else { "https://raw.githubusercontent.com/Azure/Azure-Sentinel/master/" })
+    $basePath = Join-Path -Path $RepoRoot -ChildPath $basePath
 
     # Content Counters - (for adding numbering to each item)
     $analyticRuleCounter = 1

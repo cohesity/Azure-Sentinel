@@ -5,10 +5,7 @@ cd "$SCRIPTPATH"
 
 . ../../json_parser.sh
 
-az monitor log-analytics workspace create \
-    -g "$resourcegroup" \
-    -n "$workspacename"
-
+../../workspace_create.sh
 ./storage_account_delete.sh
 
 az deployment group create \
