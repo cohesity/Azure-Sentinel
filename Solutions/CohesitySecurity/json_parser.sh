@@ -14,4 +14,6 @@ producer_fun_prefix=$(cat ./cohesity.json | jq '."producer_fun_prefix"' | sed 's
 resourcegroup=$(cat ./cohesity.json | jq '."resource_group"' | sed 's/^"//g;s/"$//g')
 #workspacename="automate-test-$(uuidgen)"
 workspacename=$(cat ./cohesity.json | jq '."workspace_name"' | sed 's/^"//g;s/"$//g')
+user_email=$(cat ./cohesity.json | jq '."user_email"' | sed 's/^"//g;s/"$//g')
+workspace_id=$(cat ./cohesity.json | jq '."workspace_id"' | sed 's/^"//g;s/"$//g')
 cd -

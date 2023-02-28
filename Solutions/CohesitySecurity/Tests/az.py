@@ -42,3 +42,22 @@ def has_dup_incidents(resource_group, workspace_name):
 def get_incident_ids(resource_group, workspace_name):
     result = subprocess.run(['az', 'sentinel', 'incident', 'list', '--resource-group', resource_group, '--workspace-name', workspace_name], stdout=subprocess.PIPE)
     return [(jsObj["id"].split("/")[-1], jsObj["description"].split("Helios ID: ")[-1]) for jsObj in json.loads(result.stdout)]
+
+
+def search_alert_id_in_incident(alert_id, resource_group, workspace_name):
+    response = subprocess.run(['az', 'sentinel', 'incident', 'list',
+                               '--resource-group', resource_group,
+                              '--workspace-name', workspace_name,
+                               '--query', "[?contains(description, '" + alert_id + "')]"], stdout=subprocess.PIPE)
+    return json.loads(response.stdout) if json.loads(response.stdout) else None
+
+
+__all__ = [
+    'get_incident_ids',
+    'get_one_incident_id',
+    'get_subscriptionId',
+    'has_dup_incidents',
+    'incident_show',
+    'run_playbook',
+    'search_alert_id_in_incident',
+]
