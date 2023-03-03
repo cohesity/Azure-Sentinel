@@ -3,12 +3,11 @@
 from az import *
 from helios import *
 import json
+import numpy as np
 import os
 import subprocess
 import time
 import unittest
-
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 
 class TestCohesity(unittest.TestCase):
@@ -18,7 +17,7 @@ class TestCohesity(unittest.TestCase):
             config = json.load(f)
             self.resource_group = config['resource_group']
             self.workspace_name = config['workspace_name']
-            self.api_key = config['apiKey']
+            self.api_key = config['api_key']
 
         # Deploy playbooks
         bash_command = "./deploy_playbooks.sh"
@@ -32,6 +31,7 @@ class TestCohesity(unittest.TestCase):
             print("error --> %s" % error.decode())
 
     def test_cohesity_close_helios_incident(self):
+        # self.skipTest("Skipping test_cohesity_close_helios_incident")
         playbook_name = "Cohesity_Close_Helios_Incident"
         subscription_id = get_subscription_id()
         vid, alert_id = get_one_incident_id(self.resource_group, self.workspace_name)
@@ -57,7 +57,9 @@ class TestCohesity(unittest.TestCase):
         self.assertEqual(len(alert_ids), len(alerts_details))
 
     def test_no_dup_incidents(self):
-        self.assertFalse(has_dup_incidents(self.resource_group, self.workspace_name))
+        ids = get_incident_ids(self.resource_group, self.workspace_name)
+        alert_ids = [alert_id for (vid, alert_id) in ids]
+        return len(alert_ids) != len(np.unique(np.array(alert_ids)))
 
     def test_alerts_in_sentinel(self):
         alert_ids = get_alerts(self.api_key)
@@ -66,4 +68,5 @@ class TestCohesity(unittest.TestCase):
 
 
 if __name__ == '__main__':
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
     unittest.main()

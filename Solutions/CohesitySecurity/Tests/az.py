@@ -4,7 +4,6 @@ provide wrapper functions for azure cli to interact with azure sentinel.
 '''
 
 import json
-import numpy as np
 import random
 import random
 import json
@@ -51,17 +50,10 @@ def get_one_incident_id(resource_group, workspace_name):
 
 
 '''
-to check whether there is any dup incident in the specified resource_group and workspace_name.
-'''
-def has_dup_incidents(resource_group, workspace_name):
-    ids = get_incident_ids(resource_group, workspace_name)
-    alert_ids = [alert_id for (vid, alert_id) in ids]
-    return len(alert_ids) != len(np.unique(np.array(alert_ids)))
-
-
-'''
 get a list of (incident id, alert_id)
 '''
+
+
 def get_incident_ids(resource_group, workspace_name):
     result = subprocess.run(['az', 'sentinel', 'incident', 'list', '--resource-group', resource_group, '--workspace-name', workspace_name], stdout=subprocess.PIPE)
     return [(jsObj["id"].split("/")[-1], jsObj["description"].split("Helios ID: ")[-1]) for jsObj in json.loads(result.stdout)]
@@ -82,7 +74,6 @@ __all__ = [
     'get_incident_ids',
     'get_one_incident_id',
     'get_subscription_id',
-    'has_dup_incidents',
     'incident_show',
     'run_playbook',
     'search_alert_id_in_incident',

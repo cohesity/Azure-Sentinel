@@ -1,14 +1,24 @@
 #!/usr/bin/env python3
-'''
-provide functions to interact with helios cluster.
-'''
 
-import requests
+"""
+This module provides functions for interacting with the Helios cluster.
+"""
+
 import datetime
+import requests
 import time
 
 
 def create_headers(api_key):
+    """
+    This function creates headers for an HTTP request to the Helios API.
+
+    Args:
+        api_key (str): The API key to authenticate the request.
+
+    Returns:
+        A dictionary containing the headers for the HTTP request.
+    """
     headers = {
         "Content-Type": "application/json",
         "authority": "helios.cohesity.com",
@@ -17,12 +27,17 @@ def create_headers(api_key):
     return headers
 
 
-'''
-get details of a batch of alert_ids, in json format.
-'''
-
-
 def get_alerts_details(alert_ids, api_key):
+    """
+    This function retrieves details for a batch of alerts, specified by a list of alert IDs.
+
+    Args:
+        alert_ids (list): A list of alert IDs to retrieve details for.
+        api_key (str): The API key to authenticate the request.
+
+    Returns:
+        A dictionary containing the details for the alerts.
+    """
     max_alerts = len(alert_ids)
     assert max_alerts > 0
     alert_ids = ",".join(alert_ids)
@@ -32,24 +47,35 @@ def get_alerts_details(alert_ids, api_key):
     return response.json() if response.json() else None
 
 
-'''
-get details of a alert_id, in json format.
-'''
-
-
 def get_alert_details(alert_id, api_key):
+    """
+    This function retrieves details for a single alert, specified by an alert ID.
+
+    Args:
+        alert_id (str): The ID of the alert to retrieve details for.
+        api_key (str): The API key to authenticate the request.
+
+    Returns:
+        A dictionary containing the details for the alert.
+    """
     api_url = "https://helios.cohesity.com/mcm/alerts?maxAlerts=1&alertIdList=" + alert_id
     headers = create_headers(api_key)
     response = requests.get(api_url, headers=headers)
     return response.json()[0] if response.json() else None
 
 
-'''
-get a time range of alert ids.
-'''
-
-
 def get_alerts(api_key, start_days_ago=30, end_days_ago=0):
+    """
+    This function retrieves a list of alert IDs for a specified time range.
+
+    Args:
+        api_key (str): The API key to authenticate the request.
+        start_days_ago (int): The number of days in the past to start retrieving alerts from.
+        end_days_ago (int): The number of days in the past to stop retrieving alerts at.
+
+    Returns:
+        A list of alert IDs for the specified time range.
+    """
     def get_days_ago_timestamp(days_ago=10):
         days_ago = datetime.datetime.now() - datetime.timedelta(days=days_ago)
         days_ago_timestamp = int(time.mktime(days_ago.timetuple()) * 1000000)
