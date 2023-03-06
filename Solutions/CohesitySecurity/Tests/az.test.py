@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 
+"""
+This module defines unit tests for the Cohesity system.
+"""
+
 from az import *
 from helios import *
 import json
@@ -12,12 +16,22 @@ import unittest
 
 class TestCohesity(unittest.TestCase):
     def setUp(self):
+        """
+        This method is called before each test case and is used to set up any necessary resources or configurations.
+        In this case, the configuration for the Cohesity system is loaded from a JSON file, and the necessary playbooks
+        are deployed.
+        """
         # Load config from JSON file
         with open('../cohesity.json') as f:
             config = json.load(f)
             self.resource_group = config['resource_group']
             self.workspace_name = config['workspace_name']
             self.api_key = config['api_key']
+
+        # Verify that config values are not empty
+        self.assertNotEqual(self.resource_group, "", "resource_group is empty")
+        self.assertNotEqual(self.workspace_name, "", "workspace_name is empty")
+        self.assertNotEqual(self.api_key, "", "api_key is empty")
 
         # Deploy playbooks
         bash_command = "./deploy_playbooks.sh"
@@ -31,6 +45,12 @@ class TestCohesity(unittest.TestCase):
             print("error --> %s" % error.decode())
 
     def test_cohesity_close_helios_incident(self):
+        """
+        This test case verifies that the 'Cohesity_Close_Helios_Incident' playbook can successfully close a Helios
+        incident. It first retrieves an incident ID and verifies that the corresponding Helios alert is in the 'kOpen'
+        state. It then runs the playbook and waits for 30 seconds before verifying that the Helios alert is in the
+        'kSuppressed' state.
+        """
         # self.skipTest("Skipping test_cohesity_close_helios_incident")
         playbook_name = "Cohesity_Close_Helios_Incident"
         subscription_id = get_subscription_id()
@@ -49,6 +69,10 @@ class TestCohesity(unittest.TestCase):
         self.assertEqual(alert_details['alertState'], "kSuppressed")
 
     def test_all_incidents_in_helios(self):
+        """
+        This test case verifies that all incidents in the Sentinel workspace have corresponding alerts in Helios, and
+        that the number of alerts in Helios matches the number of incidents in the Sentinel workspace.
+        """
         ids = get_incident_ids(self.resource_group, self.workspace_name)
         alert_ids = [alert_id for (vid, alert_id) in ids]
         for alert_id in alert_ids:
@@ -57,11 +81,17 @@ class TestCohesity(unittest.TestCase):
         self.assertEqual(len(alert_ids), len(alerts_details))
 
     def test_no_dup_incidents(self):
+        """
+        This test case verifies that there are no duplicate incidents in the Sentinel workspace.
+        """
         ids = get_incident_ids(self.resource_group, self.workspace_name)
         alert_ids = [alert_id for (vid, alert_id) in ids]
         return len(alert_ids) != len(np.unique(np.array(alert_ids)))
 
     def test_alerts_in_sentinel(self):
+        """
+        This test case verifies that all Helios alerts have corresponding incidents in the Sentinel workspace.
+        """
         alert_ids = get_alerts(self.api_key)
         for alert_id in alert_ids:
             self.assertIsNotNone(search_alert_id_in_incident(alert_id, self.resource_group, self.workspace_name), f"alert_id --> {alert_id} doesn't exist in sentinel.")

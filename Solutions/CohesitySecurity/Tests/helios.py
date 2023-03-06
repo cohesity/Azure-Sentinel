@@ -76,7 +76,7 @@ def get_alerts(api_key, start_days_ago=30, end_days_ago=0):
     Returns:
         A list of alert IDs for the specified time range.
     """
-    def get_days_ago_timestamp(days_ago=10):
+    def get_days_ago_timestamp(days_ago):
         days_ago = datetime.datetime.now() - datetime.timedelta(days=days_ago)
         days_ago_timestamp = int(time.mktime(days_ago.timetuple()) * 1000000)
         return str(days_ago_timestamp)
