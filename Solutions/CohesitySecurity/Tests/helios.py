@@ -64,7 +64,7 @@ def get_alert_details(alert_id, api_key):
     return response.json()[0] if response.json() else None
 
 
-def get_alerts(api_key, start_days_ago=30, end_days_ago=0):
+def get_alerts(api_key, start_days_ago, end_days_ago):
     """
     This function retrieves a list of alert IDs for a specified time range.
 

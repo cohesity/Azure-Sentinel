@@ -52,6 +52,7 @@ class TestCohesity(unittest.TestCase):
         'kSuppressed' state.
         """
         # self.skipTest("Skipping test_cohesity_close_helios_incident")
+        print("Starting test_cohesity_close_helios_incident...")
         playbook_name = "Cohesity_Close_Helios_Incident"
         subscription_id = get_subscription_id()
         incident_id, alert_id = get_one_incident_id(self.resource_group, self.workspace_name)
@@ -67,34 +68,44 @@ class TestCohesity(unittest.TestCase):
         print("alert_id --> %s" % alert_id)
         print("api_key --> %s" % self.api_key)
         self.assertEqual(alert_details['alertState'], "kSuppressed")
+        print("test_cohesity_close_helios_incident finished successfully.")
 
-    def test_all_incidents_in_helios(self):
-        """
-        This test case verifies that all incidents in the Sentinel workspace have corresponding alerts in Helios, and
-        that the number of alerts in Helios matches the number of incidents in the Sentinel workspace.
-        """
-        ids = get_incident_ids(self.resource_group, self.workspace_name)
-        alert_ids = [alert_id for (incident_id, alert_id) in ids]
-        for alert_id in alert_ids:
-            self.assertIsNotNone(get_alert_details(alert_id, self.api_key), f"alert_id --> {alert_id} doesn't exist in helios.")
-        alerts_details = get_alerts_details(alert_ids, self.api_key)
-        self.assertEqual(len(alert_ids), len(alerts_details))
 
-    def test_no_dup_incidents(self):
-        """
-        This test case verifies that there are no duplicate incidents in the Sentinel workspace.
-        """
-        ids = get_incident_ids(self.resource_group, self.workspace_name)
-        alert_ids = [alert_id for (incident_id, alert_id) in ids]
-        return len(alert_ids) != len(np.unique(np.array(alert_ids)))
+def test_all_incidents_in_helios(self):
+    """
+    This test case verifies that all incidents in the Sentinel workspace have corresponding alerts in Helios, and
+    that the number of alerts in Helios matches the number of incidents in the Sentinel workspace.
+    """
+    print("Starting test_all_incidents_in_helios")
+    ids = get_incident_ids(self.resource_group, self.workspace_name)
+    alert_ids = [alert_id for (incident_id, alert_id) in ids]
+    for alert_id in alert_ids:
+        self.assertIsNotNone(get_alert_details(alert_id, self.api_key), f"alert_id --> {alert_id} doesn't exist in helios.")
+    alerts_details = get_alerts_details(alert_ids, self.api_key)
+    self.assertEqual(len(alert_ids), len(alerts_details))
+    print("test_all_incidents_in_helios completed successfully")
 
-    def test_alerts_in_sentinel(self):
-        """
-        This test case verifies that all Helios alerts have corresponding incidents in the Sentinel workspace.
-        """
-        alert_ids = get_alerts(self.api_key)
-        for alert_id in alert_ids:
-            self.assertIsNotNone(search_alert_id_in_incident(alert_id, self.resource_group, self.workspace_name), f"alert_id --> {alert_id} doesn't exist in sentinel.")
+
+def test_no_dup_incidents(self):
+    """
+    This test case verifies that there are no duplicate incidents in the Sentinel workspace.
+    """
+    print("Starting test_no_dup_incidents")
+    ids = get_incident_ids(self.resource_group, self.workspace_name)
+    alert_ids = [alert_id for (incident_id, alert_id) in ids]
+    return len(alert_ids) != len(np.unique(np.array(alert_ids)))
+    print("test_no_dup_incidents completed successfully")
+
+
+def test_alerts_in_sentinel(self):
+    """
+    This test case verifies that all Helios alerts have corresponding incidents in the Sentinel workspace.
+    """
+    print("Starting test_alerts_in_sentinel")
+    alert_ids = get_alerts(self.api_key, 30, 0)
+    for alert_id in alert_ids:
+        self.assertIsNotNone(search_alert_id_in_incident(alert_id, self.resource_group, self.workspace_name), f"alert_id --> {alert_id} doesn't exist in sentinel.")
+    print("test_alerts_in_sentinel completed successfully")
 
 
 if __name__ == '__main__':
