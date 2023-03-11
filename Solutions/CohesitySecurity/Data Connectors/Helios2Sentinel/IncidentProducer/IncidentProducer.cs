@@ -1,25 +1,14 @@
 using Azure.Identity;
 using Azure.Security.KeyVault.Secrets;
-using Helios2Sentinel;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.Azure.WebJobs.Host;
 using Microsoft.Azure.WebJobs;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.WindowsAzure.Storage;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 using System.Collections.Generic;
 using System.Collections;
 using System.Dynamic;
 using System.IO;
-using System.Net.Http.Headers;
 using System.Net.Http;
-using System.Net;
-using System.Text.Json;
 using System.Text;
 using System.Threading.Tasks;
 using System;
@@ -32,8 +21,30 @@ namespace Helios2Sentinel
         private static string azureWebJobsStorage = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
         private static readonly object queueLock = new object();
         private static string containerName = "cohesity-extra-parameters";
+        private static string lastRequestDetailsBlobKey = Environment.GetEnvironmentVariable("Workspace") + "\\last-request-details";
+        private static string requestDetailsAlertIdKey = "alertIds";
 
-        public static long GetPreviousUnixTime(ILogger log)
+
+        // Returns the start time (in microseconds) to be used for perodic
+        // fetch of Helios alerts.
+        private static long GetPeriodicFetchStartTimeUsecs(ILogger log) {
+            DateTime startTime = DateTime.Now;
+            try
+            {
+                startTime = startTime.AddHours(long.Parse(Environment.GetEnvironmentVariable("periodicFetchHoursAgo")));
+            }
+            catch  (Exception ex)
+            {
+                startTime = startTime.AddHours(-24);
+                log.LogError("Exception --> 1 " + ex.Message);
+                log.LogInformation("Defaulting periodicFetchHoursAgo to -24");
+            }
+            return ((DateTimeOffset)startTime).ToUnixTimeMilliseconds() * 1000;
+        }
+
+        // Returns the start time (in microseconds) to be used for first bulk
+        // fetch of Helios alerts.
+        private static long GetFirstFetchStartTimeUsecs(ILogger log)
         {
             DateTime previousDateTime = DateTime.Now;
             try
@@ -48,12 +59,12 @@ namespace Helios2Sentinel
             return ((DateTimeOffset)previousDateTime).ToUnixTimeMilliseconds() * 1000;
         }
 
-        public static long GetCurrentUnixTime()
+        private static long GetCurrentUnixTime()
         {
             return ((DateTimeOffset)DateTime.Now).ToUnixTimeMilliseconds() * 1000;
         }
 
-        public static Task ParseAlertToQueue(
+        private static Task ParseAlertToQueue(
             [Queue("cohesity-incidents"), StorageAccount("AzureWebJobsStorage")] ICollector<string> outputQueueItem,
             dynamic alert, ILogger log)
         {
@@ -66,23 +77,23 @@ namespace Helios2Sentinel
 
             foreach (var prop in alert.propertyList)
             {
-                switch (i)
+                switch ((string)prop.key)
                 {
-                case 0:
-                case 4:
-                case 7:
-                case 10:
-                case 11:
+                case "entityId":
+                case "cid":
+                case "jobId":
+                case "jobInstanceId":
+                case "jobStartTimeUsecs":
                     WriteData(id + "\\" + (string)prop.key, (string)prop.value, log);
                     break;
-                case 1:
+                case "object":
                     title += ". Object: " + prop.value;
                     WriteData(id + "\\" + (string)prop.key, (string)prop.value, log);
                     break;
-                case 3:
+                case "source":
                     title += ". Source: " + prop.value;
                     break;
-                case 12:
+                case "anomalyStrength":
                     sev = long.Parse((string)prop.value);
 
                     if (sev >= 70)
@@ -159,6 +170,45 @@ namespace Helios2Sentinel
             }
         }
 
+        // Returns the information stored about the last request to Helios
+        // by querying Blob storage.
+        private static dynamic GetLastRequestDetails(ILogger log)
+        {
+            var jsonDetails = GetData(lastRequestDetailsBlobKey, log);
+            // log.LogInformation(jsonDetails);
+            var details = JsonConvert.DeserializeObject(jsonDetails);
+            return details;
+        }
+
+        // Writes the current request details to Blob storage.
+        private static void WriteRequestDetails(dynamic alerts, ILogger log)
+        {
+            // Create a set of alert IDs from the alerts.
+            HashSet<string> alertIds = new HashSet<string>();
+            foreach (var alert in alerts) {
+                alertIds.Add((string)alert.id);
+            }
+
+            dynamic details = new ExpandoObject();
+            details.alertIds = alertIds;
+
+            // Convert the details into JSON and persist.
+            var jsonDetails = JsonConvert.SerializeObject(details);
+            WriteData(lastRequestDetailsBlobKey, jsonDetails, log);
+        }
+
+        // Get the alerts IDs present in the last request.
+        private static HashSet<string> GetLastRequestAlertIds(ILogger log) {
+            var details = GetLastRequestDetails(log);
+
+            HashSet<string> alertIds = new HashSet<string>();
+            foreach (var alertId in details[requestDetailsAlertIdKey]) {
+                alertIds.Add((string)alertId);
+            }
+
+            return alertIds;
+        }
+
         [FunctionName("IncidentProducer")]
         public static async Task RunAsync(
 #if DEBUG
@@ -172,33 +222,30 @@ namespace Helios2Sentinel
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
             long startDateUsecs = 0;
             long endDateUsecs = GetCurrentUnixTime();
+            HashSet<string> previousAlertIds = new HashSet<string>();
 
             try
             {
-                string blobKey = Environment.GetEnvironmentVariable("Workspace") + "\\last-request-end-time-usecs";
                 bool hasException = false;
-
                 try
                 {
-                    startDateUsecs = long.Parse(GetData(blobKey, log));
+                    previousAlertIds = GetLastRequestAlertIds(log);
                 }
                 catch (Exception ex)
                 {
                     hasException = true;
-                    WriteData(blobKey, endDateUsecs.ToString(), log);
-                    log.LogError("blobKey Exception --> " + blobKey);
+                    log.LogError("lastRequestDetailsBlobKey Exception --> " + lastRequestDetailsBlobKey);
                     log.LogError("Exception --> " + ex.Message);
                 }
 
-                if (startDateUsecs == 0 || hasException)
+                if (hasException)
                 {
-                    log.LogInformation("Adding welcome alert to the queue");
-                    AddWelcomeAlertToQueue(outputQueueItem);
-                    startDateUsecs = GetPreviousUnixTime(log);
+                    startDateUsecs = GetFirstFetchStartTimeUsecs(log);
+                } else {
+                    startDateUsecs = GetPeriodicFetchStartTimeUsecs(log);
                 }
 
                 log.LogInformation("startDateUsecs --> " + startDateUsecs);
-
                 log.LogInformation("endDateUsecs --> " + endDateUsecs.ToString());
 
                 string requestUriString = $"https://helios.cohesity.com/mcm/alerts?alertCategoryList=kSecurity&alertStateList=kOpen&startDateUsecs={startDateUsecs}&endDateUsecs={endDateUsecs}";
@@ -208,17 +255,38 @@ namespace Helios2Sentinel
                 client.DefaultRequestHeaders.Add("apiKey", GetSecret("ApiKey", log));
                 await using Stream stream = await client.GetStreamAsync(requestUriString);
                 StreamReader reader = new StreamReader(stream);
-                dynamic alerts = JsonConvert.DeserializeObject(reader.ReadToEnd());
+                string jsonResult = reader.ReadToEnd();
+                // log.LogInformation("Helios response: " + jsonResult);
+                dynamic alerts = JsonConvert.DeserializeObject(jsonResult);
 
                 var tasks = new List<Task>();
 
+                if (hasException) {
+                    log.LogInformation("Adding welcome alert to the queue");
+                    AddWelcomeAlertToQueue(outputQueueItem);
+                }
+
+                int alerts_received = 0;
+                int alerts_skipped = 0;
                 foreach (var alert in alerts)
                 {
+                    ++alerts_received;
+                    // Skip adding this alert to the queue if we already saw
+                    // this alert in the last request.
+                    if (previousAlertIds.Contains(((string)alert.id))) {
+                        ++alerts_skipped;
+                        log.LogInformation("Skipping alert " + ((string)alert.id) + " as this was seen in the last request");
+                        continue;
+                    }
+
                     tasks.Add(Task.Run(async () =>
                     {
                         await ParseAlertToQueue(outputQueueItem, alert, log);
                     }));
                 }
+
+                log.LogInformation("Alerts received: " + alerts_received.ToString() +
+                                    ", Alerts skipped: " + alerts_skipped.ToString());
                 Task t = Task.WhenAll(tasks);
                 try
                 {
@@ -226,11 +294,10 @@ namespace Helios2Sentinel
                 }
                 catch { }
 
-                if (!hasException && t.Status == TaskStatus.RanToCompletion)
+                if (t.Status == TaskStatus.RanToCompletion)
                 {
-                    WriteData(blobKey, endDateUsecs.ToString(), log);
+                    WriteRequestDetails(alerts, log);
                 }
-                log.LogInformation("new startDateUsecs --> " + endDateUsecs.ToString());
             }
             catch  (Exception ex)
             {
