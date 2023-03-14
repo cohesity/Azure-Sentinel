@@ -4,7 +4,7 @@
         "AzureWebJobsStorage": "UseDevelopmentStorage=true",
         "apiKey": "11111111-2222-3333-4444-555555555555",
         "startDaysAgo": "-30",
-        "periodicFetchHoursAgos": "-24",
+        "periodicFetchHoursAgo": "-24",
         "Workspace": "your instance name",
         "CohesityQueueName": "your CohesityQueueName",
         "DefaultEndpointsProtocol": "your DefaultEndpointsProtocol",

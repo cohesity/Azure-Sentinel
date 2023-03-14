@@ -17,23 +17,33 @@ namespace Helios2Sentinel
 {
     public class IncidentProducer
     {
-        private static string keyVaultName = Environment.GetEnvironmentVariable("keyVaultName");
-        private static string azureWebJobsStorage = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
+        private static readonly string keyVaultName = Environment.GetEnvironmentVariable("keyVaultName");
+        private static readonly string azureWebJobsStorage = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
         private static readonly object queueLock = new object();
-        private static string containerName = "cohesity-extra-parameters";
-        private static string lastRequestDetailsBlobKey = Environment.GetEnvironmentVariable("Workspace") + "\\last-request-details";
-        private static string requestDetailsAlertIdKey = "alertIds";
+        private static readonly string containerName = "cohesity-extra-parameters";
+        private static readonly string lastRequestDetailsBlobKey = Environment.GetEnvironmentVariable("Workspace") + "\\last-request-details";
+        private static readonly string requestDetailsAlertIdKey = "alertIds";
+        private static readonly HashSet<String> alertPropertiesRequired =
+            new HashSet<String>() {"entityId", "cid", "jobId",
+                                    "jobInstanceId", "jobStartTimeUsecs",
+                                    "object", "source", "anomalyStrength"};
+        private static readonly HashSet<String> alertPropertiesPersisted =
+            new HashSet<String>() {"entityId", "cid", "jobId",
+                                    "jobInstanceId", "jobStartTimeUsecs",
+                                    "object"};
+        private static readonly string anomalyIngestAlertName = "DataIngestAnomalyAlert";
 
 
         // Returns the start time (in microseconds) to be used for perodic
         // fetch of Helios alerts.
-        private static long GetPeriodicFetchStartTimeUsecs(ILogger log) {
+        private static long GetPeriodicFetchStartTimeUsecs(ILogger log)
+        {
             DateTime startTime = DateTime.Now;
             try
             {
                 startTime = startTime.AddHours(long.Parse(Environment.GetEnvironmentVariable("periodicFetchHoursAgo")));
             }
-            catch  (Exception ex)
+            catch (Exception ex)
             {
                 startTime = startTime.AddHours(-24);
                 log.LogError("Exception --> 1 " + ex.Message);
@@ -51,7 +61,7 @@ namespace Helios2Sentinel
             {
                 previousDateTime = previousDateTime.AddDays(long.Parse(Environment.GetEnvironmentVariable("startDaysAgo")));
             }
-            catch  (Exception ex)
+            catch (Exception ex)
             {
                 previousDateTime = previousDateTime.AddDays(-30);
                 log.LogError("Exception --> 1 " + ex.Message);
@@ -68,51 +78,78 @@ namespace Helios2Sentinel
             [Queue("cohesity-incidents"), StorageAccount("AzureWebJobsStorage")] ICollector<string> outputQueueItem,
             dynamic alert, ILogger log)
         {
-            string title = "Cluster: " + alert.clusterName;
-            string severity = "Medium";
-
-            string id = alert.id;
-            int i = 0;
-            long sev = 70;
-
-            foreach (var prop in alert.propertyList)
+            try
             {
-                switch ((string)prop.key)
-                {
-                case "entityId":
-                case "cid":
-                case "jobId":
-                case "jobInstanceId":
-                case "jobStartTimeUsecs":
-                    WriteData(id + "\\" + (string)prop.key, (string)prop.value, log);
-                    break;
-                case "object":
-                    title += ". Object: " + prop.value;
-                    WriteData(id + "\\" + (string)prop.key, (string)prop.value, log);
-                    break;
-                case "source":
-                    title += ". Source: " + prop.value;
-                    break;
-                case "anomalyStrength":
-                    sev = long.Parse((string)prop.value);
+                string id = alert.id;
 
-                    if (sev >= 70)
-                        severity = "High";
-                    else if (sev < 30)
-                        severity = "Low";
-                    else
-                        severity = "Medium";
-                    break;
+                // Validate that this is an anomaly alert.
+                if (((string)alert.alertDocument.alertName) != anomalyIngestAlertName) {
+                    log.LogInformation("Skipping the alert with id " + id +
+                                        " and name " + (string)alert.alertDocument.alertName +
+                                        " as it is not an anomaly alert");
+                    return Task.CompletedTask;
                 }
-                i++;
-                if (i == 13) break;
-            }
-            string description = alert.alertDocument.alertDescription + ". Alert cause: " + alert.alertDocument.alertCause + ". Anomaly Strength: " + sev + ". Additional Info: " + alert.alertDocument.alertHelpText + ". Helios ID: " + alert.id;
 
-            dynamic incident = ConstructIncident(title, description, severity);
-            lock (queueLock)
+                Dictionary<string, string> properties = new Dictionary<string, string>();
+
+
+                // Parse all the properties into a dictionary.
+                foreach (var prop in alert.propertyList)
+                {
+                    properties[(string)prop.key] = (string)prop.value;
+                }
+
+                // Validate that all the required properties are present.
+                foreach (var key in alertPropertiesPersisted)
+                {
+                    if (!properties.ContainsKey(key))
+                    {
+                        log.LogError("Invalid alert: Property " + key + " not present in alert " + id);
+                        return Task.CompletedTask;
+                    }
+                }
+
+                string title = "Cluster: " + alert.clusterName;
+                title += properties["object"];
+                title += ". Source: " + properties["source"];
+                long sev = long.Parse(properties["anomalyStrength"]);
+                string severity;
+
+                if (sev >= 70)
+                {
+                    severity = "High";
+                }
+                else if (sev < 30)
+                {
+                    severity = "Low";
+                }
+                else
+                {
+                    severity = "Medium";
+                }
+
+                string description = alert.alertDocument.alertDescription +
+                    ". Alert cause: " + alert.alertDocument.alertCause +
+                    ". Anomaly Strength: " + sev +
+                    ". Additional Info: " + alert.alertDocument.alertHelpText +
+                    ". Helios ID: " + alert.id;
+
+                // Persist the properties that maybe required for other operations in Sentinel.
+                foreach (var key in alertPropertiesPersisted)
+                {
+                    WriteData(id + "\\" + key, properties[key], log);
+                }
+
+                dynamic incident = ConstructIncident(title, description, severity);
+                lock (queueLock)
+                {
+                    outputQueueItem.Add(JsonConvert.SerializeObject(incident));
+                }
+
+            }
+            catch (Exception ex)
             {
-                outputQueueItem.Add(JsonConvert.SerializeObject(incident));
+                log.LogError("Received exception while parsing alert --> " + ex.Message);
             }
 
             return Task.CompletedTask;
@@ -140,13 +177,13 @@ namespace Helios2Sentinel
                 var blobRef = container.GetBlockBlobReference(path);
 
                 using (var ms = new MemoryStream())
-                    using (var sr = new StreamReader(ms))
-                    {
-                        var task = blobRef.DownloadToStreamAsync(ms);
-                        task.Wait();
-                        ms.Position = 0;
-                        return sr.ReadToEnd();
-                    }
+                using (var sr = new StreamReader(ms))
+                {
+                    var task = blobRef.DownloadToStreamAsync(ms);
+                    task.Wait();
+                    ms.Position = 0;
+                    return sr.ReadToEnd();
+                }
             }
             else
             {
@@ -185,7 +222,8 @@ namespace Helios2Sentinel
         {
             // Create a set of alert IDs from the alerts.
             HashSet<string> alertIds = new HashSet<string>();
-            foreach (var alert in alerts) {
+            foreach (var alert in alerts)
+            {
                 alertIds.Add((string)alert.id);
             }
 
@@ -198,11 +236,13 @@ namespace Helios2Sentinel
         }
 
         // Get the alerts IDs present in the last request.
-        private static HashSet<string> GetLastRequestAlertIds(ILogger log) {
+        private static HashSet<string> GetLastRequestAlertIds(ILogger log)
+        {
             var details = GetLastRequestDetails(log);
 
             HashSet<string> alertIds = new HashSet<string>();
-            foreach (var alertId in details[requestDetailsAlertIdKey]) {
+            foreach (var alertId in details[requestDetailsAlertIdKey])
+            {
                 alertIds.Add((string)alertId);
             }
 
@@ -241,7 +281,9 @@ namespace Helios2Sentinel
                 if (hasException)
                 {
                     startDateUsecs = GetFirstFetchStartTimeUsecs(log);
-                } else {
+                }
+                else
+                {
                     startDateUsecs = GetPeriodicFetchStartTimeUsecs(log);
                 }
 
@@ -250,7 +292,7 @@ namespace Helios2Sentinel
 
                 string requestUriString = $"https://helios.cohesity.com/mcm/alerts?alertCategoryList=kSecurity&alertStateList=kOpen&startDateUsecs={startDateUsecs}&endDateUsecs={endDateUsecs}";
                 log.LogInformation("requestUriString --> " + requestUriString);
-                using HttpClient client = new ();
+                using HttpClient client = new();
                 client.DefaultRequestHeaders.Accept.Clear();
                 client.DefaultRequestHeaders.Add("apiKey", GetSecret("ApiKey", log));
                 await using Stream stream = await client.GetStreamAsync(requestUriString);
@@ -261,7 +303,8 @@ namespace Helios2Sentinel
 
                 var tasks = new List<Task>();
 
-                if (hasException) {
+                if (hasException)
+                {
                     log.LogInformation("Adding welcome alert to the queue");
                     AddWelcomeAlertToQueue(outputQueueItem);
                 }
@@ -273,7 +316,8 @@ namespace Helios2Sentinel
                     ++alerts_received;
                     // Skip adding this alert to the queue if we already saw
                     // this alert in the last request.
-                    if (previousAlertIds.Contains(((string)alert.id))) {
+                    if (previousAlertIds.Contains(((string)alert.id)))
+                    {
                         ++alerts_skipped;
                         log.LogInformation("Skipping alert " + ((string)alert.id) + " as this was seen in the last request");
                         continue;
@@ -298,8 +342,12 @@ namespace Helios2Sentinel
                 {
                     WriteRequestDetails(alerts, log);
                 }
+                else
+                {
+                    log.LogError("Some tasks did not finish successfully");
+                }
             }
-            catch  (Exception ex)
+            catch (Exception ex)
             {
                 log.LogError("Exception --> 3 " + ex.Message);
             }
@@ -327,12 +375,12 @@ namespace Helios2Sentinel
                 var secretClient = new SecretClient(new Uri(kvUri), new DefaultAzureCredential());
                 return secretClient.GetSecret(secretName).Value.Value;
             }
-            catch  (Exception ex)
+            catch (Exception ex)
             {
                 log.LogError("secretName Exception --> 4 " + secretName);
                 log.LogError("kvUri Exception --> 4 " + kvUri);
                 log.LogError("Exception --> 4 " + ex.Message);
-                return  null;
+                return null;
             }
         }
     }
