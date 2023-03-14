@@ -100,7 +100,7 @@ namespace Helios2Sentinel
                 }
 
                 // Validate that all the required properties are present.
-                foreach (var key in alertPropertiesPersisted)
+                foreach (var key in alertPropertiesRequired)
                 {
                     if (!properties.ContainsKey(key))
                     {
