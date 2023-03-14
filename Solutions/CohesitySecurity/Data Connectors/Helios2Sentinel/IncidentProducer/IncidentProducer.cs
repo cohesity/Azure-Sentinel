@@ -22,7 +22,6 @@ namespace Helios2Sentinel
         private static readonly object queueLock = new object();
         private static readonly string containerName = "cohesity-extra-parameters";
         private static readonly string lastRequestDetailsBlobKey = Environment.GetEnvironmentVariable("Workspace") + "\\last-request-details";
-        private static readonly string requestDetailsAlertIdKey = "alertIds";
         private static readonly HashSet<String> alertPropertiesRequired =
             new HashSet<String>() {"entityId", "cid", "jobId",
                                     "jobInstanceId", "jobStartTimeUsecs",
@@ -33,6 +32,22 @@ namespace Helios2Sentinel
                                     "object"};
         private static readonly string anomalyIngestAlertName = "DataIngestAnomalyAlert";
 
+
+        // Encapsulates the details regarding the Helios request for alerts.
+        // NOTE: This data is persisted on Azure Storage. Please make sure any
+        // changes to the class do not break backward compatibility.
+        class RequestDetails {
+            [JsonProperty("alertIds")]
+            public HashSet<String> alertIds;
+
+            public string ToJson() {
+                return JsonConvert.SerializeObject(this);
+            }
+
+            public static RequestDetails FromJson(string jsonStr) {
+                return JsonConvert.DeserializeObject<RequestDetails>(jsonStr);
+            }
+        }
 
         // Returns the start time (in microseconds) to be used for perodic
         // fetch of Helios alerts.
@@ -209,12 +224,11 @@ namespace Helios2Sentinel
 
         // Returns the information stored about the last request to Helios
         // by querying Blob storage.
-        private static dynamic GetLastRequestDetails(ILogger log)
+        private static RequestDetails GetLastRequestDetails(ILogger log)
         {
             var jsonDetails = GetData(lastRequestDetailsBlobKey, log);
             // log.LogInformation(jsonDetails);
-            var details = JsonConvert.DeserializeObject(jsonDetails);
-            return details;
+            return RequestDetails.FromJson(jsonDetails);
         }
 
         // Writes the current request details to Blob storage.
@@ -227,11 +241,11 @@ namespace Helios2Sentinel
                 alertIds.Add((string)alert.id);
             }
 
-            dynamic details = new ExpandoObject();
+            RequestDetails details = new RequestDetails();
             details.alertIds = alertIds;
 
             // Convert the details into JSON and persist.
-            var jsonDetails = JsonConvert.SerializeObject(details);
+            var jsonDetails = details.ToJson();
             WriteData(lastRequestDetailsBlobKey, jsonDetails, log);
         }
 
@@ -239,14 +253,7 @@ namespace Helios2Sentinel
         private static HashSet<string> GetLastRequestAlertIds(ILogger log)
         {
             var details = GetLastRequestDetails(log);
-
-            HashSet<string> alertIds = new HashSet<string>();
-            foreach (var alertId in details[requestDetailsAlertIdKey])
-            {
-                alertIds.Add((string)alertId);
-            }
-
-            return alertIds;
+            return details.alertIds;
         }
 
         [FunctionName("IncidentProducer")]
