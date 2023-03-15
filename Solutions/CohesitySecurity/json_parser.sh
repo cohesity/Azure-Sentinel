@@ -3,9 +3,9 @@ SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 cd "$SCRIPTPATH"
 
-ClientId=$(cat ./cohesity.json | jq '."ClientId"' | sed 's/^"//g;s/"$//g')
-ClientKey=$(cat ./cohesity.json | jq '."ClientKey"' | sed 's/^"//g;s/"$//g')
-StartDaysAgo=$(cat ./cohesity.json | jq '."StartDaysAgo"' | sed 's/^"//g;s/"$//g')
+ClientId=$(cat ./cohesity.json | jq '."client_id"' | sed 's/^"//g;s/"$//g')
+ClientKey=$(cat ./cohesity.json | jq '."client_key"' | sed 's/^"//g;s/"$//g')
+StartDaysAgo=$(cat ./cohesity.json | jq '."start_days_ago"' | sed 's/^"//g;s/"$//g')
 api_key=$(cat ./cohesity.json | jq '."api_key"' | sed 's/^"//g;s/"$//g')
 consumer_context=$(cat ./cohesity.json | jq '."consumer_context"' | sed 's/^"//g;s/"$//g')
 consumer_fun_prefix=$(cat ./cohesity.json | jq '."consumer_fun_prefix"' | sed 's/^"//g;s/"$//g')
