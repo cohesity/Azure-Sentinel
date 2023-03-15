@@ -1,3 +1,18 @@
+#!/usr/bin/env python3
+
+"""
+test_helios.py
+
+This script contains unit tests for the Helios module. It tests the functionality of the following functions:
+- create_headers
+- get_alerts_details
+- get_alert_details
+- get_alerts
+- get_recoveries
+
+The script utilizes the unittest framework and the unittest.mock module for mocking external dependencies like the requests library.
+"""
+
 import unittest
 import os
 import json
@@ -54,7 +69,7 @@ class TestHelios(unittest.TestCase):
 
     @patch('helios.requests.get')
     def test_get_recoveries(self, mock_requests_get):
-        with open('./recoveries.json') as f:
+        with open('./Data/recoveries.json') as f:
             json_str = json.load(f)
         mock_response = Mock()
         mock_response.json.return_value = json_str
