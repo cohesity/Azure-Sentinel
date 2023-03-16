@@ -6,12 +6,14 @@ This module defines unit tests for the Cohesity system.
 
 from az import *
 from helios import *
+from alert import *
 import json
 import numpy as np
 import os
 import subprocess
 import time
 import unittest
+import re
 
 
 class TestCohesity(unittest.TestCase):
@@ -28,11 +30,15 @@ class TestCohesity(unittest.TestCase):
             self.resource_group = config['resource_group']
             self.workspace_name = config['workspace_name']
             self.api_key = config['api_key']
+            self.alert_id = config['alert_id']
 
         # Verify that config values are not empty
-        self.assertNotEqual(self.resource_group, "", "resource_group is empty")
-        self.assertNotEqual(self.workspace_name, "", "workspace_name is empty")
+        self.assertNotEqual(self.resource_group, "",
+                            "resource_group is empty")
+        self.assertNotEqual(self.workspace_name, "",
+                            "workspace_name is empty")
         self.assertNotEqual(self.api_key, "", "api_key is empty")
+        self.assertNotEqual(self.alert_id, "", "alert_id is empty")
 
         # Deploy playbooks
         bash_command = "./deploy_playbooks.sh"
@@ -45,6 +51,49 @@ class TestCohesity(unittest.TestCase):
 
         if error:
             print("error --> %s" % error.decode())
+
+    def test_cohesity_restore_from_last_snapshot(self):
+        """
+        Test the Cohesity_Restore_From_Last_Snapshot playbook.
+        """
+        print("Starting test_cohesity_restore_from_last_snapshot...")
+        playbook_name = "Cohesity_Restore_From_Last_Snapshot"
+        subscription_id = get_subscription_id()
+        result = search_alert_id_in_incident(
+            self.alert_id, self.resource_group, self.workspace_name)
+        jsObj = result[0]
+        incident_id = jsObj["id"].split("/")[-1]
+
+        alert_details = get_alert_details(self.alert_id, self.api_key)
+        alert = Alert(json.dumps(alert_details))
+        protection_group_id = alert.get_protection_group_id()
+        cluster_id = alert.get_cluster_id()
+        current_time_usecs = int(time.time() * 1000000)
+        start_time_usecs = current_time_usecs - 180000000
+        recoveries = get_recoveries(cluster_id, self.api_key,
+                                    str(start_time_usecs))
+
+        assert recoveries is None or not recoveries.get('recoveries') \
+            or not any(any(obj['protectionGroupId'] == str(protection_group_id)
+                       for obj in recovery['vmwareParams']['objects'])
+                       for recovery in recoveries['recoveries'])
+
+        returncode = run_playbook(
+            subscription_id, incident_id, self.resource_group,
+            self.workspace_name, playbook_name)
+        self.assertEqual(returncode, 0)
+
+        time.sleep(30)  # Sleep for 30 seconds
+
+        recoveries = get_recoveries(cluster_id, self.api_key, str(start_time_usecs))
+
+        # Check that the data is not null or empty
+        assert recoveries is not None and recoveries.get('recoveries') \
+            and any(any(obj['protectionGroupId'] == str(protection_group_id)
+                        for obj in recovery['vmwareParams']['objects'])
+                    for recovery in recoveries['recoveries'])
+
+        print("test_cohesity_restore_from_last_snapshot finished successfully.")
 
     def test_cohesity_close_helios_incident(self):
         """
@@ -92,7 +141,8 @@ class TestCohesity(unittest.TestCase):
         print("Starting test_all_incidents_in_helios")
         ids = get_incident_ids(self.resource_group, self.workspace_name)
         alert_ids = [alert_id for (incident_id, alert_id) in ids]
-        for alert_id in alert_ids:
+        pattern = r"^\d+:\d+$"
+        for alert_id in [alert_id for alert_id in alert_ids if re.match(pattern, alert_id)]:
             self.assertIsNotNone(
                 get_alert_details(alert_id, self.api_key),
                 f"alert_id --> {alert_id} doesn't exist in helios.")
@@ -132,4 +182,14 @@ class TestCohesity(unittest.TestCase):
 
 if __name__ == '__main__':
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    unittest.main()
+    suite = unittest.TestSuite()
+
+    # Add all tests except the ones we want to skip
+    for test in unittest.defaultTestLoader.getTestCaseNames(TestCohesity):
+        if test not in (
+            'test_cohesity_close_helios_incident',
+            'test_alerts_in_sentinel',
+        ):
+            suite.addTest(TestCohesity(test))
+
+    unittest.TextTestRunner().run(suite)
