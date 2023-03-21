@@ -79,11 +79,17 @@ class TestCohesity(unittest.TestCase):
         alert = Alert(json.dumps(alert_details))
         protection_group_id = alert.get_protection_group_id()
         cluster_id = alert.get_cluster_id()
-        # Calculate the current time and subtract 180000000 microseconds
-        # (3 minutes) to get a start time for the recovery. Only recoveries
-        # that start within the last 3 minutes will be retrieved.
-        current_time_usecs = int(time.time() * 1000000)
-        start_time_usecs = current_time_usecs - 180000000
+
+        # Constants for better readability
+        MICROSECS_IN_SEC = 1000000
+        THREE_MINUTES_IN_USECS = 3 * 60 * MICROSECS_IN_SEC
+
+        # Calculate the current time and subtract 3 minutes to get a start time
+        # for the recovery.Only recoveries that start within the last 3 minutes
+        # will be retrieved.
+        current_time_usecs = int(time.time() * MICROSECS_IN_SEC)
+        start_time_usecs = current_time_usecs - THREE_MINUTES_IN_USECS
+
         recoveries = get_recoveries(cluster_id, self.api_key, start_time_usecs)
 
         assert (
@@ -182,7 +188,24 @@ class TestCohesity(unittest.TestCase):
         print("Starting test_all_incidents_in_helios")
         ids = get_incident_ids(self.resource_group, self.workspace_name)
         alert_ids = [alert_id for (incident_id, alert_id) in ids]
+        """
+        To exclude cohesity test alert
+        """
         pattern = r"^\d+:\d+$"
+
+        non_matching_alert_ids = [
+            alert_id
+            for alert_id in alert_ids
+            if not re.match(pattern, alert_id)
+        ]
+
+        non_matching_alert_id = non_matching_alert_ids[0]
+        self.assertIn(
+            "This is a test incident that confirms that the Cohesity function",
+            non_matching_alert_id,
+            f"The non-matching alert_id does not contain the expected string.",
+        )
+
         for alert_id in [
             alert_id for alert_id in alert_ids if re.match(pattern, alert_id)
         ]:
@@ -206,7 +229,7 @@ class TestCohesity(unittest.TestCase):
         print("Starting test_no_dup_incidents")
         ids = get_incident_ids(self.resource_group, self.workspace_name)
         alert_ids = [alert_id for (incident_id, alert_id) in ids]
-        return len(alert_ids) != len(np.unique(np.array(alert_ids)))
+        assert len(alert_ids) != len(np.unique(np.array(alert_ids)))
         print("test_no_dup_incidents completed successfully")
 
     def test_alerts_in_sentinel(self):
