@@ -21,19 +21,18 @@ from helios import *
 
 
 class TestHelios(unittest.TestCase):
-
-    @patch('helios.requests.get')
+    @patch("helios.requests.get")
     def test_create_headers(self, mock_requests_get):
         api_key = "12345"
         headers = create_headers(api_key)
         expected_headers = {
             "Content-Type": "application/json",
             "authority": "helios.cohesity.com",
-            "apiKey": api_key
+            "apiKey": api_key,
         }
         self.assertEqual(headers, expected_headers)
 
-    @patch('helios.requests.get')
+    @patch("helios.requests.get")
     def test_get_alerts_details(self, mock_requests_get):
         mock_response = Mock()
         mock_response.json.return_value = {"alert_details": "test"}
@@ -44,10 +43,12 @@ class TestHelios(unittest.TestCase):
         expected_result = {"alert_details": "test"}
         self.assertEqual(result, expected_result)
 
-    @patch('helios.requests.get')
+    @patch("helios.requests.get")
     def test_get_alert_details(self, mock_requests_get):
         mock_response = Mock()
-        mock_response.json.return_value = [{"alert_id": "1", "alert_details": "test"}]
+        mock_response.json.return_value = [
+            {"alert_id": "1", "alert_details": "test"}
+        ]
         mock_requests_get.return_value = mock_response
         api_key = "12345"
         alert_id = "1"
@@ -55,10 +56,14 @@ class TestHelios(unittest.TestCase):
         expected_result = {"alert_id": "1", "alert_details": "test"}
         self.assertEqual(result, expected_result)
 
-    @patch('helios.requests.get')
+    @patch("helios.requests.get")
     def test_get_alerts(self, mock_requests_get):
         mock_response = Mock()
-        mock_response.json.return_value = [{"id": "1"}, {"id": "2"}, {"id": "3"}]
+        mock_response.json.return_value = [
+            {"id": "1"},
+            {"id": "2"},
+            {"id": "3"},
+        ]
         mock_requests_get.return_value = mock_response
         api_key = "12345"
         start_days_ago = 7
@@ -67,9 +72,9 @@ class TestHelios(unittest.TestCase):
         expected_result = ["1", "2", "3"]
         self.assertEqual(result, expected_result)
 
-    @patch('helios.requests.get')
+    @patch("helios.requests.get")
     def test_get_recoveries(self, mock_requests_get):
-        with open('./Data/recoveries.json') as f:
+        with open("./Data/recoveries.json") as f:
             json_str = json.load(f)
         mock_response = Mock()
         mock_response.json.return_value = json_str
@@ -81,6 +86,6 @@ class TestHelios(unittest.TestCase):
         self.assertEqual(result, expected_result)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     unittest.main()

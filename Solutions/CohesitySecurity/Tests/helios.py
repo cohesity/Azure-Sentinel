@@ -22,7 +22,7 @@ def create_headers(api_key):
     headers = {
         "Content-Type": "application/json",
         "authority": "helios.cohesity.com",
-        "apiKey": api_key
+        "apiKey": api_key,
     }
     return headers
 
@@ -42,8 +42,12 @@ def get_alerts_details(alert_ids, api_key):
     max_alerts = len(alert_ids)
     assert max_alerts > 0
     alert_ids = ",".join(alert_ids)
-    api_url = "https://helios.cohesity.com/mcm/alerts?maxAlerts=" \
-              + str(max_alerts) + "&alertIdList=" + alert_ids
+    api_url = (
+        "https://helios.cohesity.com/mcm/alerts?maxAlerts="
+        + str(max_alerts)
+        + "&alertIdList="
+        + alert_ids
+    )
     headers = create_headers(api_key)
     response = requests.get(api_url, headers=headers)
     return response.json() if response.json() else None
@@ -61,8 +65,10 @@ def get_alert_details(alert_id, api_key):
     Returns:
         A dictionary containing the details for the alert.
     """
-    api_url = "https://helios.cohesity.com/mcm/alerts?maxAlerts=1" \
-              "&alertIdList=" + alert_id
+    api_url = (
+        "https://helios.cohesity.com/mcm/alerts?maxAlerts=1"
+        "&alertIdList=" + alert_id
+    )
     headers = create_headers(api_key)
     response = requests.get(api_url, headers=headers)
     return response.json()[0] if response.json() else None
@@ -82,15 +88,19 @@ def get_alerts(api_key, start_days_ago, end_days_ago):
     Returns:
         A list of alert IDs for the specified time range.
     """
+
     def get_days_ago_timestamp(days_ago):
-        days_ago = datetime.datetime.now() \
-                   - datetime.timedelta(days=days_ago)
+        days_ago = datetime.datetime.now() - datetime.timedelta(days=days_ago)
         days_ago_timestamp = int(time.mktime(days_ago.timetuple()) * 1000000)
         return str(days_ago_timestamp)
 
-    api_url = "https://helios.cohesity.com/mcm/alerts?alertCategoryList=kSecurity" \
-              + "&startDateUsecs=" + get_days_ago_timestamp(start_days_ago) \
-              + "&endDateUsecs=" + get_days_ago_timestamp(end_days_ago)
+    api_url = (
+        "https://helios.cohesity.com/mcm/alerts?alertCategoryList=kSecurity"
+        + "&startDateUsecs="
+        + get_days_ago_timestamp(start_days_ago)
+        + "&endDateUsecs="
+        + get_days_ago_timestamp(end_days_ago)
+    )
     headers = create_headers(api_key)
     response = requests.get(api_url, headers=headers)
     return [jsObj["id"] for jsObj in response.json()]
@@ -111,14 +121,13 @@ def get_recoveries(cluster_id: str, api_key: str) -> dict:
     """
 
     # Define the URL to send the request to
-    url = f"https://helios.cohesity.com/v2/data-protect/recoveries?&" \
-          "includeTenants=true"
+    url = (
+        f"https://helios.cohesity.com/v2/data-protect/recoveries?&"
+        "includeTenants=true"
+    )
 
     # Define the headers to include in the request
-    headers = {
-        "clusterid": cluster_id,
-        "apiKey": api_key
-    }
+    headers = {"clusterid": cluster_id, "apiKey": api_key}
 
     # Send the GET request and get the response
     response = requests.get(url, headers=headers)
@@ -131,9 +140,9 @@ def get_recoveries(cluster_id: str, api_key: str) -> dict:
 
 
 __all__ = [
-    'get_alert_details',
-    'get_alerts',
-    'get_alerts_details',
-    'create_headers',
-    'get_recoveries',
+    "get_alert_details",
+    "get_alerts",
+    "get_alerts_details",
+    "create_headers",
+    "get_recoveries",
 ]
