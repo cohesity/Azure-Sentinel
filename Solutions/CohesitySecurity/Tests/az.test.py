@@ -62,22 +62,36 @@ class TestCohesity(unittest.TestCase):
             self.alert_id, self.resource_group, self.workspace_name
         )
         jsObj = result[0]
+
+        # The expected format of jsObj["id"]:
+        # /subscriptions/<subscription_id>/resourceGroups/<resource_group>/
+        # providers/Microsoft.OperationalInsights/workspaces/<workspace>/
+        # providers/Microsoft.SecurityInsights/Incidents/<incident_id>
+        # Example:
+        # /subscriptions/26c46499-1b17-43a7-8d18-024c79f09bc7/resourceGroups/
+        # kishan-rg-3/providers/Microsoft.OperationalInsights/workspaces/
+        # kishan-rg3-ws4/providers/ Microsoft.SecurityInsights/Incidents/
+        # d7c70079-72e3-4122-a192-27944276c713
+
         incident_id = jsObj["id"].split("/")[-1]
 
         alert_details = get_alert_details(self.alert_id, self.api_key)
         alert = Alert(json.dumps(alert_details))
         protection_group_id = alert.get_protection_group_id()
         cluster_id = alert.get_cluster_id()
+        # Calculate the current time and subtract 180000000 microseconds
+        # (3 minutes) to get a start time for the recovery. Only recoveries
+        # that start within the last 3 minutes will be retrieved.
         current_time_usecs = int(time.time() * 1000000)
         start_time_usecs = current_time_usecs - 180000000
-        recoveries = get_recoveries(
-            cluster_id, self.api_key, str(start_time_usecs)
-        )
+        recoveries = get_recoveries(cluster_id, self.api_key, start_time_usecs)
 
         assert (
             recoveries is None
             or not recoveries.get("recoveries")
             or not any(
+                # Check if there are any objects with the same protection group
+                # ID as the one obtained from the alert
                 any(
                     obj["protectionGroupId"] == str(protection_group_id)
                     for obj in recovery["vmwareParams"]["objects"]
@@ -97,9 +111,7 @@ class TestCohesity(unittest.TestCase):
 
         time.sleep(30)  # Sleep for 30 seconds
 
-        recoveries = get_recoveries(
-            cluster_id, self.api_key, str(start_time_usecs)
-        )
+        recoveries = get_recoveries(cluster_id, self.api_key, start_time_usecs)
 
         # Check that the data is not null or empty
         assert (
@@ -216,9 +228,19 @@ class TestCohesity(unittest.TestCase):
 
 if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    """
+    unittest.main()
+    """
     suite = unittest.TestSuite()
 
     # Add all tests except the ones we want to skip
+    # TODO: Remove this block once the tests are stable, and a typical test
+    # workflow should be:
+    # 1. Create a new workspace
+    # 2. Install function apps
+    # 3. Install playbooks
+    # 4. Wait for the incidents to come in
+    # 5. Run all these tests
     for test in unittest.defaultTestLoader.getTestCaseNames(TestCohesity):
         if test not in (
             "test_cohesity_close_helios_incident",
