@@ -23,11 +23,11 @@ class TestCohesity(unittest.TestCase):
         playbooks are deployed.
         """
         # Load config from JSON file
-        with open('../cohesity.json') as f:
+        with open("../cohesity.json") as f:
             config = json.load(f)
-            self.resource_group = config['resource_group']
-            self.workspace_name = config['workspace_name']
-            self.api_key = config['api_key']
+            self.resource_group = config["resource_group"]
+            self.workspace_name = config["workspace_name"]
+            self.api_key = config["api_key"]
 
         # Verify that config values are not empty
         self.assertNotEqual(self.resource_group, "", "resource_group is empty")
@@ -37,7 +37,8 @@ class TestCohesity(unittest.TestCase):
         # Deploy playbooks
         bash_command = "./deploy_playbooks.sh"
         process = subprocess.Popen(
-            bash_command.split(), stdout=subprocess.PIPE)
+            bash_command.split(), stdout=subprocess.PIPE
+        )
         output, error = process.communicate()
 
         if output:
@@ -59,17 +60,22 @@ class TestCohesity(unittest.TestCase):
         playbook_name = "Cohesity_Close_Helios_Incident"
         subscription_id = get_subscription_id()
         incident_id, alert_id = get_one_incident_id(
-            self.resource_group, self.workspace_name)
+            self.resource_group, self.workspace_name
+        )
 
         alert_details = get_alert_details(alert_id, self.api_key)
         self.assertEqual(
-            alert_details['alertState'], "kOpen",
-            "Alert state is not kOpen")
+            alert_details["alertState"], "kOpen", "Alert state is not kOpen"
+        )
         # maybe we need to close incident after close helios alert, otherwise,
         # this assert might fail.
         returncode = run_playbook(
-            subscription_id, incident_id, self.resource_group,
-            self.workspace_name, playbook_name)
+            subscription_id,
+            incident_id,
+            self.resource_group,
+            self.workspace_name,
+            playbook_name,
+        )
         self.assertEqual(returncode, 0)
 
         time.sleep(30)  # Sleep for 30 seconds
@@ -78,10 +84,11 @@ class TestCohesity(unittest.TestCase):
         print("alert_id --> %s" % alert_id)
         print("api_key --> %s" % self.api_key)
         self.assertEqual(
-            alert_details['alertState'], "kSuppressed",
-            "Alert state is not kSuppressed")
+            alert_details["alertState"],
+            "kSuppressed",
+            "Alert state is not kSuppressed",
+        )
         print("test_cohesity_close_helios_incident finished successfully.")
-
 
     def test_all_incidents_in_helios(self):
         """
@@ -95,13 +102,15 @@ class TestCohesity(unittest.TestCase):
         for alert_id in alert_ids:
             self.assertIsNotNone(
                 get_alert_details(alert_id, self.api_key),
-                f"alert_id --> {alert_id} doesn't exist in helios.")
+                f"alert_id --> {alert_id} doesn't exist in helios.",
+            )
         alerts_details = get_alerts_details(alert_ids, self.api_key)
         self.assertEqual(
-            len(alert_ids), len(alerts_details),
-            "Number of alerts does not match the number of incidents")
+            len(alert_ids),
+            len(alerts_details),
+            "Number of alerts does not match the number of incidents",
+        )
         print("test_all_incidents_in_helios completed successfully")
-
 
     def test_no_dup_incidents(self):
         """
@@ -125,11 +134,13 @@ class TestCohesity(unittest.TestCase):
         for alert_id in alert_ids:
             self.assertIsNotNone(
                 search_alert_id_in_incident(
-                    alert_id, self.resource_group, self.workspace_name),
-                f"alert_id --> {alert_id} doesn't exist in sentinel.")
+                    alert_id, self.resource_group, self.workspace_name
+                ),
+                f"alert_id --> {alert_id} doesn't exist in sentinel.",
+            )
         print("test_alerts_in_sentinel completed successfully")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     unittest.main()

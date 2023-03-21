@@ -10,7 +10,7 @@ from alert import *
 
 class TestAlert(unittest.TestCase):
     def setUp(self):
-        self.json_str = '''[
+        self.json_str = """[
             {
                 "id": "5461471069190603:1677650940946971",
                 "alertCode": "CE01516011",
@@ -105,7 +105,7 @@ class TestAlert(unittest.TestCase):
                 "eventSource": "kHelios",
                 "alertTypeBucket": "kMaintenance"
             }
-        ]'''
+        ]"""
 
         self.alert = Alert(self.json_str)
 
@@ -121,15 +121,20 @@ class TestAlert(unittest.TestCase):
 
     def test_get_cluster_incarnation_id(self):
         print("Starting test_get_cluster_incarnation_id...")
-        self.assertEqual(self.alert.get_cluster_incarnation_id(), "1674247199596")
+        self.assertEqual(
+            self.alert.get_cluster_incarnation_id(), "1674247199596"
+        )
         print("test_get_cluster_incarnation_id finished successfully.")
 
     def test_get_protection_group_id(self):
         print("Starting test_get_protection_group_id...")
-        self.assertEqual(self.alert.get_protection_group_id(), "3576457995024682:1674247199596:9183")
+        self.assertEqual(
+            self.alert.get_protection_group_id(),
+            "3576457995024682:1674247199596:9183",
+        )
         print("test_get_protection_group_id finished successfully.")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     unittest.main()
