@@ -15,6 +15,9 @@ import time
 import unittest
 import re
 
+# Constants for better readability
+MICROSECS_IN_SEC = 1000000
+
 
 class TestCohesity(unittest.TestCase):
     def setUp(self):
@@ -80,22 +83,20 @@ class TestCohesity(unittest.TestCase):
         protection_group_id = alert.get_protection_group_id()
         cluster_id = alert.get_cluster_id()
 
-        # Constants for better readability
-        MICROSECS_IN_SEC = 1000000
-        THREE_MINUTES_IN_USECS = 3 * 60 * MICROSECS_IN_SEC
+        query_range_usecs = 3 * 60 * MICROSECS_IN_SEC
 
         # Calculate the current time and subtract 3 minutes to get a start time
         # for the recovery.Only recoveries that start within the last 3 minutes
         # will be retrieved.
         current_time_usecs = int(time.time() * MICROSECS_IN_SEC)
-        start_time_usecs = current_time_usecs - THREE_MINUTES_IN_USECS
+        start_time_usecs = current_time_usecs - query_range_usecs
 
         recoveries = get_recoveries(cluster_id, self.api_key, start_time_usecs)
 
         assert (
-            recoveries is None
-            or not recoveries.get("recoveries")
-            or not any(
+            recoveries is not None
+            and recoveries.get("recoveries")
+            and not any(
                 # Check if there are any objects with the same protection group
                 # ID as the one obtained from the alert
                 any(
@@ -246,7 +247,7 @@ class TestCohesity(unittest.TestCase):
                 ),
                 f"alert_id --> {alert_id} doesn't exist in sentinel.",
             )
-        print("test_alerts_in_sentinel completed successfully")
+            print("test_alerts_in_sentinel completed successfully")
 
 
 if __name__ == "__main__":

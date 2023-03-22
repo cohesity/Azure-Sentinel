@@ -128,10 +128,7 @@ def get_recoveries(
     """
 
     # Define the URL to send the request to
-    url = (
-        f"https://helios.cohesity.com/v2/data-protect/recoveries?&"
-        "includeTenants=true"
-    )
+    url = f"https://helios.cohesity.com/v2/data-protect/recoveries"
 
     # Define the headers to include in the request
     headers = {"clusterid": cluster_id, "apiKey": api_key}
