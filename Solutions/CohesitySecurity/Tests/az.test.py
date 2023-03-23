@@ -6,12 +6,17 @@ This module defines unit tests for the Cohesity system.
 
 from az import *
 from helios import *
+from alert import *
 import json
 import numpy as np
 import os
 import subprocess
 import time
 import unittest
+import re
+
+# Constants for better readability
+MICROSECS_IN_SEC = 1000000
 
 
 class TestCohesity(unittest.TestCase):
@@ -28,11 +33,13 @@ class TestCohesity(unittest.TestCase):
             self.resource_group = config["resource_group"]
             self.workspace_name = config["workspace_name"]
             self.api_key = config["api_key"]
+            self.alert_id = config["alert_id"]
 
         # Verify that config values are not empty
         self.assertNotEqual(self.resource_group, "", "resource_group is empty")
         self.assertNotEqual(self.workspace_name, "", "workspace_name is empty")
         self.assertNotEqual(self.api_key, "", "api_key is empty")
+        self.assertNotEqual(self.alert_id, "", "alert_id is empty")
 
         # Deploy playbooks
         bash_command = "./deploy_playbooks.sh"
@@ -46,6 +53,89 @@ class TestCohesity(unittest.TestCase):
 
         if error:
             print("error --> %s" % error.decode())
+
+    def test_cohesity_restore_from_last_snapshot(self):
+        """
+        Test the Cohesity_Restore_From_Last_Snapshot playbook.
+        """
+        print("Starting test_cohesity_restore_from_last_snapshot...")
+        playbook_name = "Cohesity_Restore_From_Last_Snapshot"
+        subscription_id = get_subscription_id()
+        result = search_alert_id_in_incident(
+            self.alert_id, self.resource_group, self.workspace_name
+        )
+        jsObj = result[0]
+
+        # The expected format of jsObj["id"]:
+        # /subscriptions/<subscription_id>/resourceGroups/<resource_group>/
+        # providers/Microsoft.OperationalInsights/workspaces/<workspace>/
+        # providers/Microsoft.SecurityInsights/Incidents/<incident_id>
+        # Example:
+        # /subscriptions/26c46499-1b17-43a7-8d18-024c79f09bc7/resourceGroups/
+        # kishan-rg-3/providers/Microsoft.OperationalInsights/workspaces/
+        # kishan-rg3-ws4/providers/ Microsoft.SecurityInsights/Incidents/
+        # d7c70079-72e3-4122-a192-27944276c713
+
+        incident_id = jsObj["id"].split("/")[-1]
+
+        alert_details = get_alert_details(self.alert_id, self.api_key)
+        alert = Alert(json.dumps(alert_details))
+        protection_group_id = alert.get_protection_group_id()
+        cluster_id = alert.get_cluster_id()
+
+        query_range_usecs = 3 * 60 * MICROSECS_IN_SEC
+
+        # Calculate the current time and subtract 3 minutes to get a start time
+        # for the recovery.Only recoveries that start within the last 3 minutes
+        # will be retrieved.
+        current_time_usecs = int(time.time() * MICROSECS_IN_SEC)
+        start_time_usecs = current_time_usecs - query_range_usecs
+
+        recoveries = get_recoveries(cluster_id, self.api_key, start_time_usecs)
+
+        assert (
+            recoveries is not None
+            and recoveries.get("recoveries")
+            and not any(
+                # Check if there are any objects with the same protection group
+                # ID as the one obtained from the alert
+                any(
+                    obj["protectionGroupId"] == str(protection_group_id)
+                    for obj in recovery["vmwareParams"]["objects"]
+                )
+                for recovery in recoveries["recoveries"]
+            )
+        )
+
+        returncode = run_playbook(
+            subscription_id,
+            incident_id,
+            self.resource_group,
+            self.workspace_name,
+            playbook_name,
+        )
+        self.assertEqual(returncode, 0)
+
+        time.sleep(30)  # Sleep for 30 seconds
+
+        recoveries = get_recoveries(cluster_id, self.api_key, start_time_usecs)
+
+        # Check that the data is not null or empty
+        assert (
+            recoveries is not None
+            and recoveries.get("recoveries")
+            and any(
+                any(
+                    obj["protectionGroupId"] == str(protection_group_id)
+                    for obj in recovery["vmwareParams"]["objects"]
+                )
+                for recovery in recoveries["recoveries"]
+            )
+        )
+
+        print(
+            "test_cohesity_restore_from_last_snapshot finished successfully."
+        )
 
     def test_cohesity_close_helios_incident(self):
         """
@@ -99,7 +189,27 @@ class TestCohesity(unittest.TestCase):
         print("Starting test_all_incidents_in_helios")
         ids = get_incident_ids(self.resource_group, self.workspace_name)
         alert_ids = [alert_id for (incident_id, alert_id) in ids]
-        for alert_id in alert_ids:
+        """
+        To exclude cohesity test alert
+        """
+        pattern = r"^\d+:\d+$"
+
+        non_matching_alert_ids = [
+            alert_id
+            for alert_id in alert_ids
+            if not re.match(pattern, alert_id)
+        ]
+
+        non_matching_alert_id = non_matching_alert_ids[0]
+        self.assertIn(
+            "This is a test incident that confirms that the Cohesity function",
+            non_matching_alert_id,
+            f"The non-matching alert_id does not contain the expected string.",
+        )
+
+        for alert_id in [
+            alert_id for alert_id in alert_ids if re.match(pattern, alert_id)
+        ]:
             self.assertIsNotNone(
                 get_alert_details(alert_id, self.api_key),
                 f"alert_id --> {alert_id} doesn't exist in helios.",
@@ -120,9 +230,8 @@ class TestCohesity(unittest.TestCase):
         print("Starting test_no_dup_incidents")
         ids = get_incident_ids(self.resource_group, self.workspace_name)
         alert_ids = [alert_id for (incident_id, alert_id) in ids]
-        return len(alert_ids) != len(np.unique(np.array(alert_ids)))
+        assert len(alert_ids) != len(np.unique(np.array(alert_ids)))
         print("test_no_dup_incidents completed successfully")
-
 
     def test_alerts_in_sentinel(self):
         """
@@ -138,9 +247,29 @@ class TestCohesity(unittest.TestCase):
                 ),
                 f"alert_id --> {alert_id} doesn't exist in sentinel.",
             )
-        print("test_alerts_in_sentinel completed successfully")
+            print("test_alerts_in_sentinel completed successfully")
 
 
 if __name__ == "__main__":
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    """
     unittest.main()
+    """
+    suite = unittest.TestSuite()
+
+    # Add all tests except the ones we want to skip
+    # TODO: Remove this block once the tests are stable, and a typical test
+    # workflow should be:
+    # 1. Create a new workspace
+    # 2. Install function apps
+    # 3. Install playbooks
+    # 4. Wait for the incidents to come in
+    # 5. Run all these tests
+    for test in unittest.defaultTestLoader.getTestCaseNames(TestCohesity):
+        if test not in (
+            "test_cohesity_close_helios_incident",
+            "test_alerts_in_sentinel",
+        ):
+            suite.addTest(TestCohesity(test))
+
+    unittest.TextTestRunner().run(suite)

@@ -8,9 +8,9 @@ class Alert:
     """
 
     def __init__(self, json_str):
-        data = json.loads(json_str)[0]
+        data = json.loads(json_str)
         self.job_id = None
-        self.cluster_id = data["clusterId"]
+        self.cluster_id = str(data["clusterId"])
         self.cluster_incarnation_id = None
         for prop in data["propertyList"]:
             if prop["key"] == "jobId":

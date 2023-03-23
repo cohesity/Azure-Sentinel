@@ -106,7 +106,9 @@ def get_alerts(api_key, start_days_ago, end_days_ago):
     return [jsObj["id"] for jsObj in response.json()]
 
 
-def get_recoveries(cluster_id: str, api_key: str) -> dict:
+def get_recoveries(
+    cluster_id: str, api_key: str, start_time_usecs=None, end_time_usecs=None
+) -> dict:
     """
     This function sends a GET request to the Helios API to get a list of all
     recoveries for a given Cohesity cluster.
@@ -114,6 +116,11 @@ def get_recoveries(cluster_id: str, api_key: str) -> dict:
     Args:
         cluster_id (str): The cluster ID of the Cohesity cluster.
         api_key (str): The API key to authenticate the request.
+        start_time_usecs (int, optional): The start time for the recoveries (in
+            microseconds).
+            If None, this value will not be included in the request.
+        end_time_usecs (int, optional): The end time for the recoveries (in
+        microseconds). If None, this value will not be included in the request.
 
     Returns:
         A dictionary representing the JSON response from the API containing
@@ -121,16 +128,22 @@ def get_recoveries(cluster_id: str, api_key: str) -> dict:
     """
 
     # Define the URL to send the request to
-    url = (
-        f"https://helios.cohesity.com/v2/data-protect/recoveries?&"
-        "includeTenants=true"
-    )
+    url = f"https://helios.cohesity.com/v2/data-protect/recoveries"
 
     # Define the headers to include in the request
     headers = {"clusterid": cluster_id, "apiKey": api_key}
 
+    # Define the parameters to include in the request
+    params = {"includeTenants": "true"}
+
+    if start_time_usecs is not None:
+        params["startTimeUsecs"] = str(start_time_usecs)
+
+    if end_time_usecs is not None:
+        params["endTimeUsecs"] = str(end_time_usecs)
+
     # Send the GET request and get the response
-    response = requests.get(url, headers=headers)
+    response = requests.get(url, headers=headers, params=params)
 
     # Raise an exception if the request was not successful
     response.raise_for_status()
