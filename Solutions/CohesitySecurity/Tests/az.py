@@ -6,6 +6,7 @@ Sentinel.
 """
 
 import json
+import requests
 import random
 import subprocess
 
@@ -155,6 +156,42 @@ def search_alert_id_in_incident(alert_id, resource_group, workspace_name):
     return json.loads(result.stdout) if json.loads(result.stdout) else None
 
 
+def get_latest_playbook_run(
+    access_token, subscription_id, resource_group, playbook_name
+):
+    headers = {
+        "Authorization": "Bearer " + access_token,
+        "Content-Type": "application/json",
+    }
+    url = (
+        "https://management.azure.com/subscriptions/{}/resourceGroups/{}/"
+        "providers/Microsoft.Logic/workflows/{}/runs?api-version=2016-06-01"
+        "&$top=1"
+    ).format(subscription_id, resource_group, playbook_name)
+    response = requests.get(url, headers=headers)
+    return response.json()
+
+
+def get_azure_access_token(
+    tenant_id, client_id, client_secret, resource_url, scope
+):
+    authority_url = "https://login.microsoftonline.com/{}/oauth2/token".format(
+        tenant_id
+    )
+    response = requests.post(
+        authority_url,
+        data={
+            "grant_type": "client_credentials",
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "resource": resource_url,
+            "scope": scope,
+        },
+    )
+    access_token = response.json()["access_token"]
+    return access_token
+
+
 __all__ = [
     "get_incident_ids",
     "get_one_incident_id",
@@ -162,4 +199,6 @@ __all__ = [
     "incident_show",
     "run_playbook",
     "search_alert_id_in_incident",
+    "get_azure_access_token",
+    "get_latest_playbook_run",
 ]

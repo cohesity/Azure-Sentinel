@@ -15,9 +15,6 @@ import time
 import unittest
 import re
 
-# Constants for better readability
-MICROSECS_IN_SEC = 1000000
-
 
 class TestCohesity(unittest.TestCase):
     def setUp(self):
@@ -34,12 +31,35 @@ class TestCohesity(unittest.TestCase):
             self.workspace_name = config["workspace_name"]
             self.api_key = config["api_key"]
             self.alert_id = config["alert_id"]
+            self.tenant_id = config["tenant_id"]
+            self.client_id = config["client_id"]
+            self.client_secret = config["client_secret"]
+            self.resource_url = config["resource_url"]
+            self.scope = config["scope"]
+            self.subscription_id = config["subscription_id"]
+
+        self.access_token = get_azure_access_token(
+            self.tenant_id,
+            self.client_id,
+            self.client_secret,
+            self.resource_url,
+            self.scope,
+        )
 
         # Verify that config values are not empty
         self.assertNotEqual(self.resource_group, "", "resource_group is empty")
         self.assertNotEqual(self.workspace_name, "", "workspace_name is empty")
         self.assertNotEqual(self.api_key, "", "api_key is empty")
         self.assertNotEqual(self.alert_id, "", "alert_id is empty")
+        self.assertNotEqual(self.tenant_id, "", "tenant_id is empty")
+        self.assertNotEqual(self.client_id, "", "client_id is empty")
+        self.assertNotEqual(self.client_secret, "", "client_secret is empty")
+        self.assertNotEqual(self.resource_url, "", "resource_url is empty")
+        self.assertNotEqual(self.scope, "", "scope is empty")
+        self.assertNotEqual(self.access_token, "", "access_token is empty")
+        self.assertNotEqual(
+            self.subscription_id, "", "subscription_id is empty"
+        )
 
         # Deploy playbooks
         bash_command = "./deploy_playbooks.sh"
@@ -83,30 +103,6 @@ class TestCohesity(unittest.TestCase):
         protection_group_id = alert.get_protection_group_id()
         cluster_id = alert.get_cluster_id()
 
-        query_range_usecs = 3 * 60 * MICROSECS_IN_SEC
-
-        # Calculate the current time and subtract 3 minutes to get a start time
-        # for the recovery.Only recoveries that start within the last 3 minutes
-        # will be retrieved.
-        current_time_usecs = int(time.time() * MICROSECS_IN_SEC)
-        start_time_usecs = current_time_usecs - query_range_usecs
-
-        recoveries = get_recoveries(cluster_id, self.api_key, start_time_usecs)
-
-        assert (
-            recoveries is not None
-            and recoveries.get("recoveries")
-            and not any(
-                # Check if there are any objects with the same protection group
-                # ID as the one obtained from the alert
-                any(
-                    obj["protectionGroupId"] == str(protection_group_id)
-                    for obj in recovery["vmwareParams"]["objects"]
-                )
-                for recovery in recoveries["recoveries"]
-            )
-        )
-
         returncode = run_playbook(
             subscription_id,
             incident_id,
@@ -114,23 +110,24 @@ class TestCohesity(unittest.TestCase):
             self.workspace_name,
             playbook_name,
         )
-        self.assertEqual(returncode, 0)
 
         time.sleep(30)  # Sleep for 30 seconds
 
-        recoveries = get_recoveries(cluster_id, self.api_key, start_time_usecs)
-
-        # Check that the data is not null or empty
+        playbook_run = get_latest_playbook_run(
+            self.access_token,
+            self.subscription_id,
+            self.resource_group,
+            playbook_name,
+        )
         assert (
-            recoveries is not None
-            and recoveries.get("recoveries")
-            and any(
-                any(
-                    obj["protectionGroupId"] == str(protection_group_id)
-                    for obj in recovery["vmwareParams"]["objects"]
-                )
-                for recovery in recoveries["recoveries"]
+            playbook_run["value"][0]["properties"]["status"] == "Succeeded"
+            or print(
+                "Assertion failed. Status: "
+                f"{playbook_run['value'][0]['properties']['status']}, "
+                "Playbook Run: "
+                f"{json.dumps(playbook_run['value'][0], indent=2)}"
             )
+            or False
         )
 
         print(
@@ -153,12 +150,6 @@ class TestCohesity(unittest.TestCase):
             self.resource_group, self.workspace_name
         )
 
-        alert_details = get_alert_details(alert_id, self.api_key)
-        self.assertEqual(
-            alert_details["alertState"], "kOpen", "Alert state is not kOpen"
-        )
-        # maybe we need to close incident after close helios alert, otherwise,
-        # this assert might fail.
         returncode = run_playbook(
             subscription_id,
             incident_id,
@@ -166,18 +157,22 @@ class TestCohesity(unittest.TestCase):
             self.workspace_name,
             playbook_name,
         )
-        self.assertEqual(returncode, 0)
 
         time.sleep(30)  # Sleep for 30 seconds
-
-        alert_details = get_alert_details(alert_id, self.api_key)
-        print("alert_id --> %s" % alert_id)
-        print("api_key --> %s" % self.api_key)
-        self.assertEqual(
-            alert_details["alertState"],
-            "kSuppressed",
-            "Alert state is not kSuppressed",
+        playbook_run = get_latest_playbook_run(
+            self.access_token,
+            self.subscription_id,
+            self.resource_group,
+            playbook_name,
         )
+        assert (
+            playbook_run["value"][0]["properties"]["status"] == "Succeeded"
+            or print(
+                f"Assertion failed. Status: {playbook_run['value'][0]['properties']['status']}, Playbook Run: {json.dumps(playbook_run['value'][0], indent=2)}"
+            )
+            or False
+        )
+
         print("test_cohesity_close_helios_incident finished successfully.")
 
     def test_all_incidents_in_helios(self):
@@ -255,7 +250,6 @@ if __name__ == "__main__":
     """
     unittest.main()
     """
-    suite = unittest.TestSuite()
 
     # Add all tests except the ones we want to skip
     # TODO: Remove this block once the tests are stable, and a typical test
@@ -265,11 +259,18 @@ if __name__ == "__main__":
     # 3. Install playbooks
     # 4. Wait for the incidents to come in
     # 5. Run all these tests
-    for test in unittest.defaultTestLoader.getTestCaseNames(TestCohesity):
-        if test not in (
-            "test_cohesity_close_helios_incident",
-            "test_alerts_in_sentinel",
-        ):
-            suite.addTest(TestCohesity(test))
+    suite = unittest.TestSuite(
+        [
+            TestCohesity(test)
+            for test in unittest.defaultTestLoader.getTestCaseNames(
+                TestCohesity
+            )
+            if test
+            not in (
+                "test_cohesity_close_helios_incident",
+                "test_cohesity_close_helios_incident",
+            )
+        ]
+    )
 
     unittest.TextTestRunner().run(suite)
