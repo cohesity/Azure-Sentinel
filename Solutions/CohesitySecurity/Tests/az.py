@@ -156,9 +156,24 @@ def search_alert_id_in_incident(alert_id, resource_group, workspace_name):
     return json.loads(result.stdout) if json.loads(result.stdout) else None
 
 
-def get_latest_playbook_run(
+def get_latest_playbook_run_status(
     access_token, subscription_id, resource_group, playbook_name
 ):
+    """
+    This function retrieves the status of the latest playbook run in Azure Logic Apps.
+    It makes a request to the Azure Management API, parses the response, and returns
+    the status of the latest run (e.g., "Succeeded", "Failed", "Running").
+
+    Parameters:
+    - access_token (str): Azure access token for authentication
+    - subscription_id (str): Azure subscription ID
+    - resource_group (str): Azure resource group containing the playbook
+    - playbook_name (str): Name of the playbook in the Logic App
+
+    Returns:
+    - str: The status of the latest playbook run
+    """
+
     headers = {
         "Authorization": "Bearer " + access_token,
         "Content-Type": "application/json",
@@ -169,7 +184,9 @@ def get_latest_playbook_run(
         "&$top=1"
     ).format(subscription_id, resource_group, playbook_name)
     response = requests.get(url, headers=headers)
-    return response.json()
+    response_json = response.json()
+    status = response_json["value"][0]["properties"]["status"]
+    return status
 
 
 def get_azure_access_token(
@@ -200,5 +217,5 @@ __all__ = [
     "run_playbook",
     "search_alert_id_in_incident",
     "get_azure_access_token",
-    "get_latest_playbook_run",
+    "get_latest_playbook_run_status",
 ]

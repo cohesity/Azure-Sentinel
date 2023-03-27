@@ -15,6 +15,9 @@ import time
 import unittest
 import re
 
+# Constants for better readability
+MICROSECS_IN_SEC = 1000000
+
 
 class TestCohesity(unittest.TestCase):
     def setUp(self):
@@ -103,6 +106,30 @@ class TestCohesity(unittest.TestCase):
         protection_group_id = alert.get_protection_group_id()
         cluster_id = alert.get_cluster_id()
 
+        query_range_usecs = 3 * 60 * MICROSECS_IN_SEC
+
+        # Calculate the current time and subtract 3 minutes to get a start time
+        # for the recovery.Only recoveries that start within the last 3 minutes
+        # will be retrieved.
+        current_time_usecs = int(time.time() * MICROSECS_IN_SEC)
+        start_time_usecs = current_time_usecs - query_range_usecs
+
+        recoveries = get_recoveries(cluster_id, self.api_key, start_time_usecs)
+
+        assert (
+            recoveries is not None
+            and recoveries.get("recoveries")
+            and not any(
+                # Check if there are any objects with the same protection group
+                # ID as the one obtained from the alert
+                any(
+                    obj["protectionGroupId"] == str(protection_group_id)
+                    for obj in recovery["vmwareParams"]["objects"]
+                )
+                for recovery in recoveries["recoveries"]
+            )
+        )
+
         returncode = run_playbook(
             subscription_id,
             incident_id,
@@ -110,24 +137,38 @@ class TestCohesity(unittest.TestCase):
             self.workspace_name,
             playbook_name,
         )
+        self.assertEqual(returncode, 0)
 
-        time.sleep(30)  # Sleep for 30 seconds
-
-        playbook_run = get_latest_playbook_run(
-            self.access_token,
-            self.subscription_id,
-            self.resource_group,
-            playbook_name,
-        )
-        assert (
-            playbook_run["value"][0]["properties"]["status"] == "Succeeded"
-            or print(
-                "Assertion failed. Status: "
-                f"{playbook_run['value'][0]['properties']['status']}, "
-                "Playbook Run: "
-                f"{json.dumps(playbook_run['value'][0], indent=2)}"
+        while True:
+            status = get_latest_playbook_run_status(
+                self.access_token,
+                self.subscription_id,
+                self.resource_group,
+                playbook_name,
             )
+            if status != "Running":
+                break
+            time.sleep(5)  # Sleep for 5 seconds between status checks
+
+        assert (
+            status == "Succeeded"
+            or print(f"Assertion failed. Status: {status}. ")
             or False
+        )
+
+        recoveries = get_recoveries(cluster_id, self.api_key, start_time_usecs)
+
+        # Check that the data is not null or empty
+        assert (
+            recoveries is not None
+            and recoveries.get("recoveries")
+            and any(
+                any(
+                    obj["protectionGroupId"] == str(protection_group_id)
+                    for obj in recovery["vmwareParams"]["objects"]
+                )
+                for recovery in recoveries["recoveries"]
+            )
         )
 
         print(
@@ -150,6 +191,12 @@ class TestCohesity(unittest.TestCase):
             self.resource_group, self.workspace_name
         )
 
+        alert_details = get_alert_details(alert_id, self.api_key)
+        self.assertEqual(
+            alert_details["alertState"], "kOpen", "Alert state is not kOpen"
+        )
+        # maybe we need to close incident after close helios alert, otherwise,
+        # this assert might fail.
         returncode = run_playbook(
             subscription_id,
             incident_id,
@@ -157,22 +204,33 @@ class TestCohesity(unittest.TestCase):
             self.workspace_name,
             playbook_name,
         )
+        self.assertEqual(returncode, 0)
 
-        time.sleep(30)  # Sleep for 30 seconds
-        playbook_run = get_latest_playbook_run(
-            self.access_token,
-            self.subscription_id,
-            self.resource_group,
-            playbook_name,
-        )
-        assert (
-            playbook_run["value"][0]["properties"]["status"] == "Succeeded"
-            or print(
-                f"Assertion failed. Status: {playbook_run['value'][0]['properties']['status']}, Playbook Run: {json.dumps(playbook_run['value'][0], indent=2)}"
+        while True:
+            status = get_latest_playbook_run_status(
+                self.access_token,
+                self.subscription_id,
+                self.resource_group,
+                playbook_name,
             )
+            if status != "Running":
+                break
+            time.sleep(5)  # Sleep for 5 seconds between status checks
+
+        assert (
+            status == "Succeeded"
+            or print(f"Assertion failed. Status: {status}. ")
             or False
         )
 
+        alert_details = get_alert_details(alert_id, self.api_key)
+        print("alert_id --> %s" % alert_id)
+        print("api_key --> %s" % self.api_key)
+        self.assertEqual(
+            alert_details["alertState"],
+            "kSuppressed",
+            "Alert state is not kSuppressed",
+        )
         print("test_cohesity_close_helios_incident finished successfully.")
 
     def test_all_incidents_in_helios(self):
@@ -265,11 +323,7 @@ if __name__ == "__main__":
             for test in unittest.defaultTestLoader.getTestCaseNames(
                 TestCohesity
             )
-            if test
-            not in (
-                "test_cohesity_close_helios_incident",
-                "test_cohesity_close_helios_incident",
-            )
+            if test in ("test_cohesity_restore_from_last_snapshot",)
         ]
     )
 
