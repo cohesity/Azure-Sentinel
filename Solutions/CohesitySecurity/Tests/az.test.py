@@ -136,25 +136,9 @@ class TestCohesity(unittest.TestCase):
             self.resource_group,
             self.workspace_name,
             playbook_name,
+            self.access_token,
         )
         self.assertEqual(returncode, 0)
-
-        while True:
-            status = get_latest_playbook_run_status(
-                self.access_token,
-                self.subscription_id,
-                self.resource_group,
-                playbook_name,
-            )
-            if status != "Running":
-                break
-            time.sleep(5)  # Sleep for 5 seconds between status checks
-
-        assert (
-            status == "Succeeded"
-            or print(f"Assertion failed. Status: {status}. ")
-            or False
-        )
 
         recoveries = get_recoveries(cluster_id, self.api_key, start_time_usecs)
 
@@ -203,25 +187,9 @@ class TestCohesity(unittest.TestCase):
             self.resource_group,
             self.workspace_name,
             playbook_name,
+            self.access_token,
         )
         self.assertEqual(returncode, 0)
-
-        while True:
-            status = get_latest_playbook_run_status(
-                self.access_token,
-                self.subscription_id,
-                self.resource_group,
-                playbook_name,
-            )
-            if status != "Running":
-                break
-            time.sleep(5)  # Sleep for 5 seconds between status checks
-
-        assert (
-            status == "Succeeded"
-            or print(f"Assertion failed. Status: {status}. ")
-            or False
-        )
 
         alert_details = get_alert_details(alert_id, self.api_key)
         print("alert_id --> %s" % alert_id)

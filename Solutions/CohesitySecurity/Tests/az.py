@@ -7,6 +7,7 @@ Sentinel.
 
 import json
 import requests
+import time
 import random
 import subprocess
 
@@ -47,7 +48,12 @@ def incident_show(incident_id, resource_group, workspace_name):
 
 
 def run_playbook(
-    subscription_id, incident_id, resource_group, workspace_name, playbook_name
+    subscription_id,
+    incident_id,
+    resource_group,
+    workspace_name,
+    playbook_name,
+    access_token,
 ):
     """
     Runs a playbook by name, resource group, and workspace name.
@@ -78,6 +84,28 @@ def run_playbook(
             logic_apps_resource_id,
         ],
         stdout=subprocess.PIPE,
+    )
+
+    while True:
+        playbook_run = get_latest_playbook_run(
+            access_token,
+            subscription_id,
+            resource_group,
+            playbook_name,
+        )
+        if playbook_run["value"][0]["properties"]["status"] != "Running":
+            break
+        time.sleep(5)  # Sleep for 5 seconds between status checks
+
+    assert (
+        playbook_run["value"][0]["properties"]["status"] == "Succeeded"
+        or print(
+            "Assertion failed. Status: "
+            f"{playbook_run['value'][0]['properties']['status']}, "
+            "Playbook Run: "
+            f"{json.dumps(playbook_run['value'][0], indent=2)}"
+        )
+        or False
     )
     return result.returncode
 
@@ -156,14 +184,13 @@ def search_alert_id_in_incident(alert_id, resource_group, workspace_name):
     return json.loads(result.stdout) if json.loads(result.stdout) else None
 
 
-def get_latest_playbook_run_status(
+def get_latest_playbook_run(
     access_token, subscription_id, resource_group, playbook_name
 ):
     """
-    This function retrieves the status of the latest playbook run in Azure
+    This function retrieves the latest playbook run in Azure
     Logic Apps. It makes a request to the Azure Management API, parses the
-    response, and returns the status of the latest run
-    (e.g., "Succeeded", "Failed", "Running").
+    response, and returns the JSON object containing details of the latest run.
 
     Parameters:
         - access_token (str): Azure access token for authentication
@@ -172,7 +199,8 @@ def get_latest_playbook_run_status(
         - playbook_name (str): Name of the playbook in the Logic App
 
     Returns:
-        - str: The status of the latest playbook run
+        - dict: A JSON object containing details of the latest playbook run,
+            or None if an error occurs
     """
 
     headers = {
@@ -188,9 +216,7 @@ def get_latest_playbook_run_status(
     try:
         response = requests.get(url, headers=headers)
         response.raise_for_status()
-        response_json = response.json()
-        status = response_json["value"][0]["properties"]["status"]
-        return status
+        return response.json()
     except requests.exceptions.RequestException as e:
         print(
             f"An error occurred while retrieving the playbook run status: {e}"
@@ -243,5 +269,4 @@ __all__ = [
     "run_playbook",
     "search_alert_id_in_incident",
     "get_azure_access_token",
-    "get_latest_playbook_run_status",
 ]
