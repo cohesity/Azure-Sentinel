@@ -34,12 +34,35 @@ class TestCohesity(unittest.TestCase):
             self.workspace_name = config["workspace_name"]
             self.api_key = config["api_key"]
             self.alert_id = config["alert_id"]
+            self.tenant_id = config["tenant_id"]
+            self.client_id = config["client_id"]
+            self.client_secret = config["client_secret"]
+            self.resource_url = config["resource_url"]
+            self.scope = config["scope"]
+            self.subscription_id = config["subscription_id"]
+
+        self.access_token = get_azure_access_token(
+            self.tenant_id,
+            self.client_id,
+            self.client_secret,
+            self.resource_url,
+            self.scope,
+        )
 
         # Verify that config values are not empty
         self.assertNotEqual(self.resource_group, "", "resource_group is empty")
         self.assertNotEqual(self.workspace_name, "", "workspace_name is empty")
         self.assertNotEqual(self.api_key, "", "api_key is empty")
         self.assertNotEqual(self.alert_id, "", "alert_id is empty")
+        self.assertNotEqual(self.tenant_id, "", "tenant_id is empty")
+        self.assertNotEqual(self.client_id, "", "client_id is empty")
+        self.assertNotEqual(self.client_secret, "", "client_secret is empty")
+        self.assertNotEqual(self.resource_url, "", "resource_url is empty")
+        self.assertNotEqual(self.scope, "", "scope is empty")
+        self.assertNotEqual(self.access_token, "", "access_token is empty")
+        self.assertNotEqual(
+            self.subscription_id, "", "subscription_id is empty"
+        )
 
         # Deploy playbooks
         bash_command = "./deploy_playbooks.sh"
@@ -116,7 +139,22 @@ class TestCohesity(unittest.TestCase):
         )
         self.assertEqual(returncode, 0)
 
-        time.sleep(30)  # Sleep for 30 seconds
+        while True:
+            status = get_latest_playbook_run_status(
+                self.access_token,
+                self.subscription_id,
+                self.resource_group,
+                playbook_name,
+            )
+            if status != "Running":
+                break
+            time.sleep(5)  # Sleep for 5 seconds between status checks
+
+        assert (
+            status == "Succeeded"
+            or print(f"Assertion failed. Status: {status}. ")
+            or False
+        )
 
         recoveries = get_recoveries(cluster_id, self.api_key, start_time_usecs)
 
@@ -168,7 +206,22 @@ class TestCohesity(unittest.TestCase):
         )
         self.assertEqual(returncode, 0)
 
-        time.sleep(30)  # Sleep for 30 seconds
+        while True:
+            status = get_latest_playbook_run_status(
+                self.access_token,
+                self.subscription_id,
+                self.resource_group,
+                playbook_name,
+            )
+            if status != "Running":
+                break
+            time.sleep(5)  # Sleep for 5 seconds between status checks
+
+        assert (
+            status == "Succeeded"
+            or print(f"Assertion failed. Status: {status}. ")
+            or False
+        )
 
         alert_details = get_alert_details(alert_id, self.api_key)
         print("alert_id --> %s" % alert_id)
@@ -255,7 +308,6 @@ if __name__ == "__main__":
     """
     unittest.main()
     """
-    suite = unittest.TestSuite()
 
     # Add all tests except the ones we want to skip
     # TODO: Remove this block once the tests are stable, and a typical test
@@ -265,11 +317,14 @@ if __name__ == "__main__":
     # 3. Install playbooks
     # 4. Wait for the incidents to come in
     # 5. Run all these tests
-    for test in unittest.defaultTestLoader.getTestCaseNames(TestCohesity):
-        if test not in (
-            "test_cohesity_close_helios_incident",
-            "test_alerts_in_sentinel",
-        ):
-            suite.addTest(TestCohesity(test))
+    suite = unittest.TestSuite(
+        [
+            TestCohesity(test)
+            for test in unittest.defaultTestLoader.getTestCaseNames(
+                TestCohesity
+            )
+            if test in ("test_cohesity_restore_from_last_snapshot",)
+        ]
+    )
 
     unittest.TextTestRunner().run(suite)

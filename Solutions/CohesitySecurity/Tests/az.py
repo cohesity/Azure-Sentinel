@@ -6,6 +6,7 @@ Sentinel.
 """
 
 import json
+import requests
 import random
 import subprocess
 
@@ -155,6 +156,85 @@ def search_alert_id_in_incident(alert_id, resource_group, workspace_name):
     return json.loads(result.stdout) if json.loads(result.stdout) else None
 
 
+def get_latest_playbook_run_status(
+    access_token, subscription_id, resource_group, playbook_name
+):
+    """
+    This function retrieves the status of the latest playbook run in Azure
+    Logic Apps. It makes a request to the Azure Management API, parses the
+    response, and returns the status of the latest run
+    (e.g., "Succeeded", "Failed", "Running").
+
+    Parameters:
+        - access_token (str): Azure access token for authentication
+        - subscription_id (str): Azure subscription ID
+        - resource_group (str): Azure resource group containing the playbook
+        - playbook_name (str): Name of the playbook in the Logic App
+
+    Returns:
+        - str: The status of the latest playbook run
+    """
+
+    headers = {
+        "Authorization": "Bearer " + access_token,
+        "Content-Type": "application/json",
+    }
+    url = (
+        "https://management.azure.com/subscriptions/{}/resourceGroups/{}/"
+        "providers/Microsoft.Logic/workflows/{}/runs?api-version=2016-06-01"
+        "&$top=1"
+    ).format(subscription_id, resource_group, playbook_name)
+
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+        response_json = response.json()
+        status = response_json["value"][0]["properties"]["status"]
+        return status
+    except requests.exceptions.RequestException as e:
+        print(
+            f"An error occurred while retrieving the playbook run status: {e}"
+        )
+        return None
+
+
+def get_azure_access_token(
+    tenant_id, client_id, client_secret, resource_url, scope
+):
+    """
+    Obtains an access token from Azure Active Directory (Azure AD) using the
+    OAuth 2.0 client credentials grant flow. Access tokens are used to
+    authenticate requests made to Azure services.
+    Parameters:
+        - tenant_id (str): The ID of the Azure AD tenant where the application
+            is registered.
+        - client_id (str): The application's client ID in Azure AD.
+        - client_secret (str): The application's client secret.
+        - resource_url (str): The URL of the resource or service you want to
+            access.
+        - scope (str): The desired scope of permissions for the access token.
+
+    Returns:
+        - access_token (str): The access token that can be used to authenticate
+            requests to Azure services.
+    """
+    authority_url = "https://login.microsoftonline.com/{}/oauth2/token".format(
+        tenant_id
+    )
+    response = requests.post(
+        authority_url,
+        data={
+            "grant_type": "client_credentials",
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "resource": resource_url,
+            "scope": scope,
+        },
+    )
+    access_token = response.json()["access_token"]
+    return access_token
+
+
 __all__ = [
     "get_incident_ids",
     "get_one_incident_id",
@@ -162,4 +242,6 @@ __all__ = [
     "incident_show",
     "run_playbook",
     "search_alert_id_in_incident",
+    "get_azure_access_token",
+    "get_latest_playbook_run_status",
 ]
