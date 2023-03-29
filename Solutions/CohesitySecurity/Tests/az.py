@@ -12,6 +12,59 @@ import random
 import subprocess
 
 
+def run_az_command(command):
+    """
+    Runs an Azure CLI command and returns the output as a Python object.
+    """
+    result = subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=True,
+    )
+    if result.returncode == 0:
+        return json.loads(result.stdout)
+    else:
+        print(f"Error: {result.stderr}")
+        return None
+
+
+def list_folder_content(
+    storage_account, storage_account_key, container_name, folder_name
+):
+    """
+    Returns a list of blobs in the specified folder within the container.
+    """
+    folder_content_cmd = (
+        f"az storage blob list --account-name {storage_account} "
+        f"--account-key {storage_account_key} --container-name {container_name} "
+        f"--prefix {folder_name} --output json"
+    )
+    return run_az_command(folder_content_cmd)
+
+
+def get_storage_account(resource_group):
+    """
+    Returns the storage account name for the specified resource group.
+    """
+    storage_account_cmd = (
+        f"az storage account list --resource-group {resource_group} "
+        f'--query "[0].name" --output json'
+    )
+    return run_az_command(storage_account_cmd)
+
+
+def get_storage_account_key(resource_group, storage_account):
+    """
+    Returns the storage account key for the specified storage account.
+    """
+    storage_account_key_cmd = (
+        f"az storage account keys list --resource-group {resource_group} "
+        f'--account-name {storage_account} --query "[0].value" --output json'
+    )
+    return run_az_command(storage_account_key_cmd)
+
+
 def get_subscription_id():
     """
     Returns the subscription ID of the current Azure account.
@@ -277,4 +330,7 @@ __all__ = [
     "run_playbook",
     "search_alert_id_in_incident",
     "get_azure_access_token",
+    "get_storage_account",
+    "get_storage_account_key",
+    "list_folder_content",
 ]

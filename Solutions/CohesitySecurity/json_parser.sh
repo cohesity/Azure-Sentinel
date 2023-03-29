@@ -15,5 +15,6 @@ resource_group=$(cat ./cohesity.json | jq '."resource_group"' | sed 's/^"//g;s/"
 # workspace_name="automate-test-$(uuidgen)"
 workspace_name=$(cat ./cohesity.json | jq '."workspace_name"' | sed 's/^"//g;s/"$//g')
 user_email=$(cat ./cohesity.json | jq '."user_email"' | sed 's/^"//g;s/"$//g')
+container_name=$(cat ./cohesity.json | jq '."container_name"' | sed 's/^"//g;s/"$//g')
 workspace_id=$(cat ./cohesity.json | jq '."workspace_id"' | sed 's/^"//g;s/"$//g')
 cd -
