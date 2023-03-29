@@ -86,6 +86,9 @@ def run_playbook(
         stdout=subprocess.PIPE,
     )
 
+    start_time = time.time()
+    timeout = 5 * 60  # Timeout in seconds (5 minutes)
+
     while True:
         playbook_run = get_latest_playbook_run(
             access_token,
@@ -95,6 +98,11 @@ def run_playbook(
         )
         if playbook_run["value"][0]["properties"]["status"] != "Running":
             break
+        elapsed_time = time.time() - start_time
+        if elapsed_time > timeout:
+            print("Timeout reached: 5 minutes have passed.")
+            break
+
         time.sleep(5)  # Sleep for 5 seconds between status checks
 
     assert (
