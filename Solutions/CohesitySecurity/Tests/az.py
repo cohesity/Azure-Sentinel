@@ -43,15 +43,42 @@ def list_folder_content(
     return run_az_command(folder_content_cmd)
 
 
-def get_storage_account(resource_group):
+def get_validated_storage_account(resource_group, name_prefix):
     """
-    Returns the storage account name for the specified resource group.
+    Returns the storage account name for the specified resource group if it
+    meets the specified conditions: only 1 storage account is present and
+    the name starts with the given name_prefix.
+
+    :param resource_group: The resource group to search for the storage account
+    :param name_prefix: The expected storage account name prefix
+    :return: The storage account name if it meets the conditions, otherwise None
     """
     storage_account_cmd = (
-        f"az storage account list --resource-group {resource_group} "
-        f'--query "[0].name" --output json'
+        f"az storage account list "
+        f"--resource-group {resource_group} "
+        f"--output json"
     )
-    return run_az_command(storage_account_cmd)
+    storage_accounts = run_az_command(storage_account_cmd)
+
+    # Check if there is only one storage account in the resource group
+    if len(storage_accounts) != 1:
+        print(
+            f"Error: {resource_group} has {len(storage_accounts)} storage "
+            f"accounts. Exactly 1 storage account is expected."
+        )
+        return None
+
+    storage_account_name = storage_accounts[0]["name"]
+
+    # Check if the storage account name starts with the given name_prefix
+    if not storage_account_name.startswith(name_prefix):
+        print(
+            f"Error: The storage account name '{storage_account_name}' "
+            f"does not start with '{name_prefix}'."
+        )
+        return None
+
+    return storage_account_name
 
 
 def get_storage_account_key(resource_group, storage_account):
@@ -330,7 +357,7 @@ __all__ = [
     "run_playbook",
     "search_alert_id_in_incident",
     "get_azure_access_token",
-    "get_storage_account",
+    "get_validated_storage_account",
     "get_storage_account_key",
     "list_folder_content",
 ]

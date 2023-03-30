@@ -41,6 +41,7 @@ class TestCohesity(unittest.TestCase):
             self.scope = config["scope"]
             self.subscription_id = config["subscription_id"]
             self.container_name = config["container_name"]
+            self.name_prefix = config["producer_fun_prefix"]
 
         self.access_token = get_azure_access_token(
             self.tenant_id,
@@ -49,7 +50,9 @@ class TestCohesity(unittest.TestCase):
             self.resource_url,
             self.scope,
         )
-        self.storage_account = get_storage_account(self.resource_group)
+        self.storage_account = get_validated_storage_account(
+            self.resource_group, self.name_prefix
+        )
         self.storage_account_key = get_storage_account_key(
             self.resource_group, self.storage_account
         )
@@ -65,6 +68,7 @@ class TestCohesity(unittest.TestCase):
         self.assertNotEqual(self.resource_url, "", "resource_url is empty")
         self.assertNotEqual(self.scope, "", "scope is empty")
         self.assertNotEqual(self.access_token, "", "access_token is empty")
+        self.assertNotEqual(self.name_prefix, "", "name_prefix is empty")
         self.assertNotEqual(
             self.subscription_id, "", "subscription_id is empty"
         )
