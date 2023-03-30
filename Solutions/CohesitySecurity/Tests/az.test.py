@@ -69,10 +69,19 @@ class TestCohesity(unittest.TestCase):
             self.subscription_id, "", "subscription_id is empty"
         )
         self.assertNotEqual(self.container_name, "", "container_name is empty")
+
+        self.assertIsNotNone(
+            self.storage_account,
+            "No storage account found in the specified resource group.",
+        )
         self.assertNotEqual(
             self.storage_account,
             "",
             "No storage account found in the specified resource group.",
+        )
+        self.assertIsNotNone(
+            self.storage_account_key,
+            "No storage account key found in the specified resource group.",
         )
         self.assertNotEqual(
             self.storage_account_key,
