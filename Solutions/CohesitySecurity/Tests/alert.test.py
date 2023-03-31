@@ -4,8 +4,9 @@
 This module defines unit tests for the Alert.
 """
 
+import json
 import unittest
-from alert import *
+from alert import Alert
 import os
 
 
@@ -22,7 +23,7 @@ class TestAlert(unittest.TestCase):
 
     def test_get_cluster_id(self):
         print("Starting test_get_cluster_id...")
-        self.assertEqual(self.alert.get_cluster_id(), 3576457995024682)
+        self.assertEqual(self.alert.get_cluster_id(), "3576457995024682")
         print("test_get_cluster_id finished successfully.")
 
     def test_get_cluster_incarnation_id(self):

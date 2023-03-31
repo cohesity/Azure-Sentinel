@@ -6,7 +6,7 @@ This module defines unit tests for the Cohesity system.
 
 from az import *
 from helios import *
-from alert import *
+from alert import Alert
 import json
 import numpy as np
 import os
