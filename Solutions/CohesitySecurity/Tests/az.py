@@ -105,16 +105,11 @@ def run_playbook(
 
         time.sleep(5)  # Sleep for 5 seconds between status checks
 
-    assert (
-        playbook_run["value"][0]["properties"]["status"] == "Succeeded"
-        or print(
-            "Assertion failed. Status: "
-            f"{playbook_run['value'][0]['properties']['status']}, "
-            "Playbook Run: "
-            f"{json.dumps(playbook_run['value'][0], indent=2)}"
-        )
-        or False
-    )
+
+    run_status = playbook_run["value"][0]["properties"]["status"]
+    assert run_status == "Succeeded", \
+        f"Assertion failed. Status: {run_status} " \
+        "Playbook Run:\n {json.dumps(playbook_run['value'][0], indent=2)}"
     return result.returncode
 
 
