@@ -13,7 +13,7 @@
     "start_days_ago": "-30",
     "user_email": "********",
     "resource_url": "https://management.azure.com/",
-    "scope": "https://management.azure.com/.default",
+    "azure_url_scope": "https://management.azure.com/.default",
     "workspace_id": "********",
     "alert_id": "5461471069190603:1677650940946971",
     "tenant_id": "********",
