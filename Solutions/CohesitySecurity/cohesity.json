@@ -1,5 +1,5 @@
 {
-    "api_key": "<cohesity-helio-api-key>",
+    "api_key": "<cohesity-helios-api-key>",
     "resource_group": "<resource-group-name>",
     "automation_account_name": "MyAutomationAccount",
     "producer_fun_prefix": "cohesitypro",
