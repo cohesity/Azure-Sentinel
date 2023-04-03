@@ -40,7 +40,7 @@ class TestCohesity(unittest.TestCase):
             self.resource_url = config["resource_url"]
             self.scope = config["azure_url_scope"]
             self.subscription_id = config["subscription_id"]
-            self.container_name = config["container_name"]
+            self.blob_container_name = config["blob_container_name"]
             self.producer_prefix = config["producer_fun_prefix"]
 
         self.access_token = get_azure_access_token(
@@ -74,7 +74,7 @@ class TestCohesity(unittest.TestCase):
         self.assertNotEqual(
             self.subscription_id, "", "subscription_id is empty"
         )
-        self.assertNotEqual(self.container_name, "", "container_name is empty")
+        self.assertNotEqual(self.blob_container_name, "", "blob_container_name is empty")
 
         self.assertIsNotNone(
             self.storage_account,
@@ -251,7 +251,7 @@ class TestCohesity(unittest.TestCase):
             folder_content = list_folder_content(
                 self.storage_account,
                 self.storage_account_key,
-                self.container_name,
+                self.blob_container_name,
                 folder_name,
             )
             if folder_content:
@@ -278,7 +278,7 @@ class TestCohesity(unittest.TestCase):
         updated_folder_content = list_folder_content(
             self.storage_account,
             self.storage_account_key,
-            self.container_name,
+            self.blob_container_name,
             folder_name,
         )
 

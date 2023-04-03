@@ -30,14 +30,14 @@ def run_az_command(command):
 
 
 def list_folder_content(
-    storage_account, storage_account_key, container_name, folder_name
+    storage_account, storage_account_key, blob_container_name, folder_name
 ):
     """
     Returns a list of blobs in the specified folder within the container.
     """
     folder_content_cmd = (
         f"az storage blob list --account-name {storage_account} "
-        f"--account-key {storage_account_key} --container-name {container_name} "
+        f"--account-key {storage_account_key} --container-name {blob_container_name} "
         f"--prefix {folder_name} --output json"
     )
     return run_az_command(folder_content_cmd)
@@ -185,11 +185,11 @@ def run_playbook(
 
         time.sleep(5)  # Sleep for 5 seconds between status checks
 
-
     run_status = playbook_run["value"][0]["properties"]["status"]
-    assert run_status == "Succeeded", \
-        f"Assertion failed. Status: {run_status} " \
+    assert run_status == "Succeeded", (
+        f"Assertion failed. Status: {run_status} "
         "Playbook Run:\n {json.dumps(playbook_run['value'][0], indent=2)}"
+    )
     return result.returncode
 
 
