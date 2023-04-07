@@ -1,6 +1,6 @@
 {
-    "api_key": "<cohesity-helios-api-key>",
-    "resource_group": "<resource-group-name>",
+    "api_key": "***********************",
+    "resource_group": "****************",
     "automation_account_name": "MyAutomationAccount",
     "producer_fun_prefix": "cohesitypro",
     "producer_context": "IncidentProducer",
@@ -18,5 +18,8 @@
     "alert_id": "5461471069190603:1677650940946971",
     "tenant_id": "********",
     "blob_container_name": "cohesity-extra-parameters",
-    "workspace_name": "<workspace-name>"
+    "workspace_name": "**************",
+    "service_now_username": "admin",
+    "service_now_password": "************",
+    "service_now_instance_url": "https://dev84323.service-now.com"
 }
