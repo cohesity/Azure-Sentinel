@@ -7,6 +7,8 @@ This module defines unit tests for the Cohesity system.
 from az import *
 from helios import *
 from alert import Alert
+import requests
+from urllib.parse import quote
 import json
 import numpy as np
 import os
@@ -42,6 +44,9 @@ class TestCohesity(unittest.TestCase):
             self.subscription_id = config["subscription_id"]
             self.blob_container_name = config["blob_container_name"]
             self.producer_prefix = config["producer_fun_prefix"]
+            self.service_now_username = config["service_now_username"]
+            self.service_now_password = config["service_now_password"]
+            self.service_now_instance_url = config["service_now_instance_url"]
 
         self.access_token = get_azure_access_token(
             self.tenant_id,
@@ -56,6 +61,7 @@ class TestCohesity(unittest.TestCase):
         self.storage_account_key = get_storage_account_key(
             self.resource_group, self.storage_account
         )
+        self.subscription_id = get_subscription_id()
 
         # Verify that config values are not empty
         self.assertNotEqual(self.resource_group, "", "resource_group is empty")
@@ -69,12 +75,28 @@ class TestCohesity(unittest.TestCase):
         self.assertNotEqual(self.scope, "", "scope is empty")
         self.assertNotEqual(self.access_token, "", "access_token is empty")
         self.assertNotEqual(
+            self.subscription_id, "", "subscription_id is empty"
+        )
+        self.assertNotEqual(
             self.producer_prefix, "", "producer_prefix is empty"
         )
         self.assertNotEqual(
             self.subscription_id, "", "subscription_id is empty"
         )
-        self.assertNotEqual(self.blob_container_name, "", "blob_container_name is empty")
+        self.assertNotEqual(
+            self.service_now_username, "", "service_now_username is empty"
+        )
+        self.assertNotEqual(
+            self.service_now_password, "", "service_now_password is empty"
+        )
+        self.assertNotEqual(
+            self.service_now_instance_url,
+            "",
+            "service_now_instance_url is empty",
+        )
+        self.assertNotEqual(
+            self.blob_container_name, "", "blob_container_name is empty"
+        )
 
         self.assertIsNotNone(
             self.storage_account,
@@ -114,7 +136,6 @@ class TestCohesity(unittest.TestCase):
         """
         print("Starting test_cohesity_restore_from_last_snapshot...")
         playbook_name = "Cohesity_Restore_From_Last_Snapshot"
-        subscription_id = get_subscription_id()
         result = search_alert_id_in_incident(
             self.alert_id, self.resource_group, self.workspace_name
         )
@@ -161,8 +182,8 @@ class TestCohesity(unittest.TestCase):
             )
         )
 
-        returncode = run_playbook(
-            subscription_id,
+        returncode, run_id, client_tracking_id = run_playbook(
+            self.subscription_id,
             incident_id,
             self.resource_group,
             self.workspace_name,
@@ -200,7 +221,6 @@ class TestCohesity(unittest.TestCase):
         """
         print("Starting test_cohesity_close_helios_incident...")
         playbook_name = "Cohesity_Close_Helios_Incident"
-        subscription_id = get_subscription_id()
         incident_id, alert_id = get_one_incident_id(
             self.resource_group, self.workspace_name
         )
@@ -211,8 +231,8 @@ class TestCohesity(unittest.TestCase):
         )
         # maybe we need to close incident after close helios alert, otherwise,
         # this assert might fail.
-        returncode = run_playbook(
-            subscription_id,
+        returncode, run_id, client_tracking_id = run_playbook(
+            self.subscription_id,
             incident_id,
             self.resource_group,
             self.workspace_name,
@@ -239,7 +259,6 @@ class TestCohesity(unittest.TestCase):
         """
         print("Starting test_cohesity_delete_incident_blobs...")
         playbook_name = "Cohesity_Delete_Incident_Blobs"
-        subscription_id = get_subscription_id()
         ids = get_incident_ids(self.resource_group, self.workspace_name)
 
         # Loop through ids and find the first non-empty folder_content
@@ -265,8 +284,8 @@ class TestCohesity(unittest.TestCase):
             "Please ensure at least one folder has content for the test."
         )
 
-        returncode = run_playbook(
-            subscription_id,
+        returncode, run_id, client_tracking_id = run_playbook(
+            self.subscription_id,
             found_incident_id,
             self.resource_group,
             self.workspace_name,
@@ -288,6 +307,59 @@ class TestCohesity(unittest.TestCase):
         ), "The folder content was not deleted after running the playbook."
 
         print("test_cohesity_delete_incident_blobs finished successfully.")
+
+    def test_cohesity_createorupdate_servicenow_incident(self):
+        print("Starting test_cohesity_createorupdate_servicenow_incident...")
+        playbook_name = "Cohesity_CreateOrUpdate_ServiceNow_Incident"
+        incident_id, alert_id = get_one_incident_id(
+            self.resource_group, self.workspace_name
+        )
+        returncode, run_id, client_tracking_id = run_playbook(
+            self.subscription_id,
+            incident_id,
+            self.resource_group,
+            self.workspace_name,
+            playbook_name,
+            self.access_token,
+        )
+        headers = {
+            "Accept": "application/json",
+            "Content-Type": "application/json",
+        }
+        credentials = (self.service_now_username, self.service_now_password)
+
+        service_now_field = "u_client_tracking_id"
+        query_string = f"{service_now_field}={client_tracking_id}"
+        encoded_query_string = quote(query_string)
+
+        url = f"{self.service_now_instance_url}/api/now/v2/table/incident?sysparm_query={encoded_query_string}"
+        response = requests.get(url, headers=headers, auth=credentials)
+
+        error_msg = f"Error querying ServiceNow: Status code: {response.status_code}, Reason: {response.reason}, Content: {response.content}"
+        self.assertEqual(response.status_code, 200, error_msg)
+
+        incidents = response.json()["result"]
+        self.assertNotEqual(
+            len(incidents), 0, "No related incident found in ServiceNow"
+        )
+
+        for incident in incidents:
+            self.assertIsNotNone(
+                incident["number"], "Incident number is missing"
+            )
+            self.assertIsNotNone(
+                incident["sys_id"], "Incident sys_id is missing"
+            )
+            self.assertIsNotNone(
+                incident["state"], "Incident state is missing"
+            )
+            self.assertIsNotNone(
+                incident["description"], "Incident description is missing"
+            )
+        print(
+            "test_cohesity_createorupdate_servicenow_incident finished "
+            "successfully."
+        )
 
     def test_all_incidents_in_helios(self):
         """
@@ -379,7 +451,7 @@ if __name__ == "__main__":
             for test in unittest.defaultTestLoader.getTestCaseNames(
                 TestCohesity
             )
-            if test in ("test_cohesity_delete_incident_blobs",)
+            if test in ("test_cohesity_createorupdate_servicenow_incident",)
         ]
     )
 

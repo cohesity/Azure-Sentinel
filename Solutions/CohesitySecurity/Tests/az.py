@@ -186,11 +186,15 @@ def run_playbook(
         time.sleep(5)  # Sleep for 5 seconds between status checks
 
     run_status = playbook_run["value"][0]["properties"]["status"]
-    assert run_status == "Succeeded", (
-        f"Assertion failed. Status: {run_status} "
-        "Playbook Run:\n {json.dumps(playbook_run['value'][0], indent=2)}"
-    )
-    return result.returncode
+    run_id = playbook_run["value"][0]["name"]
+    client_tracking_id = playbook_run["value"][0]["properties"]["correlation"][
+        "clientTrackingId"
+    ]
+
+    assert (
+        run_status == "Succeeded"
+    ), f"Assertion failed. Status: {run_status}. Playbook Run: {json.dumps(playbook_run['value'][0], indent=2)}"
+    return result.returncode, run_id, client_tracking_id
 
 
 def get_one_incident_id(resource_group, workspace_name):
