@@ -309,6 +309,19 @@ class TestCohesity(unittest.TestCase):
         print("test_cohesity_delete_incident_blobs finished successfully.")
 
     def test_cohesity_createorupdate_servicenow_incident(self):
+        """
+        Test the Cohesity_CreateOrUpdate_ServiceNow_Incident playbook.
+
+        This test function checks whether the Cohesity_CreateOrUpdate_ServiceNow_Incident
+        playbook can successfully create or update ServiceNow incidents with the given
+        incident ID and alert ID. It verifies the following:
+
+        1. The playbook is able to run successfully with valid inputs.
+        2. The ServiceNow API is returning a status code of 200 (successful) for the query.
+        3. The returned incidents are not empty and have the required fields (number, sys_id, state, description).
+
+        If all conditions are met, the test is considered successful.
+        """
         print("Starting test_cohesity_createorupdate_servicenow_incident...")
         playbook_name = "Cohesity_CreateOrUpdate_ServiceNow_Incident"
         incident_id, alert_id = get_one_incident_id(
