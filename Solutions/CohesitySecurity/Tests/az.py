@@ -6,6 +6,7 @@ Sentinel.
 """
 
 import json
+import re
 import requests
 import time
 import random
@@ -104,9 +105,57 @@ def get_subscription_id():
     return subscription_id
 
 
-def incident_show(incident_id, resource_group, workspace_name):
+def get_snow_system_ids(incident_details):
     """
-    Returns the details of a specific incident in JSON format.
+    This function takes in incident details as input, extracts the 'labels' from the incident details,
+    and searches for the 'SNOW System ID' label among the labels. If the label is found, it extracts
+    the alphanumeric string that represents the System ID from the label using a regular expression.
+    The function returns a list of the extracted SNOW System IDs.
+
+    :param incident_details: A dictionary containing incident details
+    :type incident_details: dict
+
+    :return: A list of SNOW System IDs extracted from the incident details
+    :rtype: list
+    """
+    incident_details_dict = incident_details
+    labels = incident_details_dict["labels"]
+    snow_system_ids = [
+        # Search for a 32-character hexadecimal string (SNOW System ID) in the label's name
+        re.search(r"([a-fA-F0-9]{32})", label["labelName"]).group(1)
+        # Iterate through each label in the labels list
+        for label in labels
+        # Check if the label's name contains the "SNOW System ID" substring
+        if "SNOW System ID" in label["labelName"]
+    ]
+    return snow_system_ids
+
+
+def get_decoded_incident_details(incident_id, resource_group, workspace_name):
+    """
+    This function takes in an incident ID, resource group, and workspace name as input,
+    retrieves the incident details for the given incident ID using the 'get_incident_details' function,
+    decodes the incident details using UTF-8, and returns a dictionary of the decoded incident details.
+
+    :param incident_id: The ID of the incident to retrieve details for
+    :type incident_id: str
+    :param resource_group: The name of the resource group containing the workspace
+    :type resource_group: str
+    :param workspace_name: The name of the workspace containing the incident
+    :type workspace_name: str
+
+    :return: A dictionary containing the decoded incident details
+    :rtype: dict
+    """
+    incident_details = get_incident_details(
+        incident_id, resource_group, workspace_name
+    )
+    return json.loads(incident_details.decode("utf-8"))
+
+
+def get_incident_details(incident_id, resource_group, workspace_name):
+    """
+    Returns the details of a specific incident.
     """
     result = subprocess.run(
         [
@@ -123,8 +172,7 @@ def incident_show(incident_id, resource_group, workspace_name):
         ],
         stdout=subprocess.PIPE,
     )
-    jsObj = json.loads(result.stdout)
-    return jsObj
+    return result.stdout
 
 
 def run_playbook(
@@ -186,11 +234,15 @@ def run_playbook(
         time.sleep(5)  # Sleep for 5 seconds between status checks
 
     run_status = playbook_run["value"][0]["properties"]["status"]
-    assert run_status == "Succeeded", (
-        f"Assertion failed. Status: {run_status} "
-        "Playbook Run:\n {json.dumps(playbook_run['value'][0], indent=2)}"
-    )
-    return result.returncode
+    run_id = playbook_run["value"][0]["name"]
+    client_tracking_id = playbook_run["value"][0]["properties"]["correlation"][
+        "clientTrackingId"
+    ]
+
+    assert (
+        run_status == "Succeeded"
+    ), f"Assertion failed. Status: {run_status}. Playbook Run: {json.dumps(playbook_run['value'][0], indent=2)}"
+    return result.returncode, run_id, client_tracking_id
 
 
 def get_one_incident_id(resource_group, workspace_name):
@@ -348,11 +400,13 @@ __all__ = [
     "get_incident_ids",
     "get_one_incident_id",
     "get_subscription_id",
-    "incident_show",
+    "get_incident_details",
     "run_playbook",
     "search_alert_id_in_incident",
     "get_azure_access_token",
     "get_validated_storage_account",
     "get_storage_account_key",
     "list_folder_content",
+    "get_decoded_incident_details",
+    "get_snow_system_ids",
 ]
