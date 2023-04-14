@@ -7,7 +7,7 @@ This module defines unit tests for the Cohesity system.
 from az import *
 from helios import *
 from alert import Alert
-from servicenow_utils import *
+from servicenow import ServiceNow
 import json
 import numpy as np
 import os
@@ -47,6 +47,11 @@ class TestCohesity(unittest.TestCase):
             self.service_now_password = config["service_now_password"]
             self.service_now_instance_url = config["service_now_instance_url"]
 
+        self.service_now_instance = ServiceNow(
+            self.service_now_username,
+            self.service_now_password,
+            self.service_now_instance_url,
+        )
         self.access_token = get_azure_access_token(
             self.tenant_id,
             self.client_id,
@@ -347,21 +352,30 @@ class TestCohesity(unittest.TestCase):
         )
         new_snow_system_ids = get_snow_system_ids(updated_incident_details)
 
-        diff_snow_system_id = get_diff_snow_system_id(
-            snow_system_ids, new_snow_system_ids
+        if len(new_snow_system_ids) != len(snow_system_ids) + 1:
+            raise ValueError(
+                "The size of new_snow_system_ids must be exactly one greater than the size of snow_system_ids."
+            )
+
+        diff_snow_system_id = (
+            self.service_now_instance.get_diff_snow_system_id(
+                snow_system_ids, new_snow_system_ids
+            )
         )
 
-        status_code, incident = query_servicenow_incidents(
-            self.service_now_username,
-            self.service_now_password,
-            self.service_now_instance_url,
-            diff_snow_system_id,
+        (
+            status_code,
+            incident,
+        ) = self.service_now_instance.query_servicenow_incidents(
+            diff_snow_system_id
         )
 
         error_msg = f"Error querying ServiceNow: Status code: {status_code}"
         self.assertEqual(status_code, 200, error_msg)
 
-        verify_incident_fields(self, incident, incident_details)
+        self.service_now_instance.verify_incident_fields(
+            self, incident, incident_details
+        )
         print(
             "test_cohesity_createorupdate_servicenow_incident finished successfully."
         )

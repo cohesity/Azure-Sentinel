@@ -121,8 +121,11 @@ def get_snow_system_ids(incident_details):
     incident_details_dict = incident_details
     labels = incident_details_dict["labels"]
     snow_system_ids = [
+        # Search for a 32-character hexadecimal string (SNOW System ID) in the label's name
         re.search(r"([a-fA-F0-9]{32})", label["labelName"]).group(1)
+        # Iterate through each label in the labels list
         for label in labels
+        # Check if the label's name contains the "SNOW System ID" substring
         if "SNOW System ID" in label["labelName"]
     ]
     return snow_system_ids
