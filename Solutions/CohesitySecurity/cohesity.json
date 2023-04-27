@@ -1,6 +1,7 @@
 {
     "api_key": "<cohesity-helios-api-key>",
     "resource_group": "<resource-group-name>",
+    "resource_type": "Microsoft.OperationalInsights/workspaces",
     "automation_account_name": "MyAutomationAccount",
     "producer_fun_prefix": "cohesitypro",
     "producer_context": "IncidentProducer",
@@ -8,9 +9,11 @@
     "consumer_context": "IncidentConsumer",
     "subscription_id": "********",
     "client_id": "********",
+    "object_id": "********",
     "client_secret": "********",
     "client_key": "********",
     "start_days_ago": "-30",
+    "location": "********",
     "user_email": "********",
     "resource_url": "https://management.azure.com/",
     "azure_url_scope": "https://management.azure.com/.default",
@@ -18,5 +21,8 @@
     "alert_id": "5461471069190603:1677650940946971",
     "tenant_id": "********",
     "blob_container_name": "cohesity-extra-parameters",
-    "workspace_name": "<workspace-name>"
+    "workspace_name": "<workspace-name>",
+    "service_now_username": "********",
+    "service_now_password": "********",
+    "service_now_instance_url": "********"
 }
