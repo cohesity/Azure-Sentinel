@@ -1,16 +1,14 @@
 #!/bin/zsh
-SCRIPT=$(realpath "$0")
-SCRIPTPATH=$(dirname "$SCRIPT")
-cd "$SCRIPTPATH"
+#
+# Description: This script deploys and configures Azure Sentinel resources
+# and permissions for the specified resource group, workspace, and other parameters.
 
-. ../../json_parser.sh
-
-az monitor log-analytics workspace create \
-    -g "$resource_group" \
-    -n "$workspace_name"
-
+# Source necessary scripts
+. ../../create_sentinel_resource_group.sh
+. ../../grant_role.sh
 ./storage_account_delete.sh
 
+# Deploy the Azure Sentinel resources
 az deployment group create \
     --name ExampleDeployment \
     --resource-group "$resource_group" \
@@ -20,3 +18,11 @@ az deployment group create \
     --parameters ClientKey="$client_key" \
     --parameters StartDaysAgo="$start_days_ago" \
     --parameters Workspace="$workspace_name"
+
+# Deploy playbooks, assign Sentinel role, and configure permissions
+. ./deploy_playbooks.sh
+. ./assign_sentinel_role.sh
+. ./configure_permissions.sh
+
+# Grant Key Vault permissions
+. ./grant_keyvault_permission.sh
