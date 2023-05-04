@@ -48,4 +48,5 @@ else
     echo "Error:"
     echo "$principal_id"
     echo "$role_definition_id"
+    exit 1
 fi

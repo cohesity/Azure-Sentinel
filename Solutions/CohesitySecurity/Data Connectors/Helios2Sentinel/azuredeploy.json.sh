@@ -11,12 +11,15 @@ cd "$SCRIPTPATH"
 # Load JSON parser
 . ../../json_parser.sh
 
+# Source error handling script
+. ./error_handling.sh
+
 # Remove existing resources
-./remove.py
+./remove.py || error_handler
 
 # Deploy configurations
-. ./deploy_config.sh
+. ./deploy_config.sh || error_handler
 
 # Uncomment the following lines to deploy producer and consumer functions
-# ./deploy.py "$producer_fun_prefix" "./$producer_context/"
-# ./deploy.py "$consumer_fun_prefix" "./$consumer_context/"
+# ./deploy.py "$producer_fun_prefix" "./$producer_context/" || error_handler
+# ./deploy.py "$consumer_fun_prefix" "./$consumer_context/" || error_handler
