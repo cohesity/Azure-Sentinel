@@ -1,9 +1,9 @@
 #!/bin/zsh
+SCRIPT=$(realpath "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+cd "$SCRIPTPATH"
 
 # Description: This script grants "Get" permissions to the specified user and playbooks on the Key Vault.
-
-# Source error handler script
-. ./error_handling.sh
 
 # Set variables
 keyvault_prefix="cohesitypro"
@@ -11,10 +11,16 @@ playbook_names=("Cohesity_Close_Helios_Incident" "Cohesity_CreateOrUpdate_Servic
 user_object_id="142355ec-a29b-40b7-81c3-e769c76b1756"
 
 # Get the Key Vault
-keyvault_name=$(az keyvault list --query "[?starts_with(name, '$keyvault_prefix')].{Name:name}" --output tsv | head -n 1) || error_handler "No Key Vault found with the specified prefix"
+keyvault_name=$(az keyvault list --query "[?starts_with(name, '$keyvault_prefix')].{Name:name}" --output tsv | head -n 1)
+error_handler "No Key Vault found with the specified prefix"
 
 # Grant the "Get" permission to the user
 az keyvault set-policy --name "$keyvault_name" --object-id "$user_object_id" --secret-permissions get
+
+
+# Print resource_group and workspace_name for later debug
+echo "During grant keyvault permission, Resource Group: $resource_group"
+echo "During grant keyvault permission, Workspace Name: $workspace_name"
 
 # Iterate through the playbooks
 for playbook_name in "${playbook_names[@]}"; do
@@ -27,7 +33,10 @@ for playbook_name in "${playbook_names[@]}"; do
     fi
 
     # Grant the "Get" permission to the playbook
-    az keyvault set-policy --name "$keyvault_name" --object-id "$playbook_object_id" --secret-permissions get || error_handler "Failed to grant permissions for playbook: $playbook_name"
+    az keyvault set-policy --name "$keyvault_name" --object-id "$playbook_object_id" --secret-permissions get
+    error_handler "Failed to grant permissions for playbook: $playbook_name"
 
     echo "Permissions granted for playbook: $playbook_name"
 done
+
+cd -
