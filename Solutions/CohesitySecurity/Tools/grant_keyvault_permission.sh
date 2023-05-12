@@ -1,14 +1,14 @@
 #!/bin/zsh
+
+# Description: This script grants "Get" permissions to the specified user and playbooks on the Key Vault.
+
 SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 cd "$SCRIPTPATH"
 
-# Description: This script grants "Get" permissions to the specified user and playbooks on the Key Vault.
-
 # Set variables
-keyvault_prefix="cohesitypro"
-playbook_names=("Cohesity_Close_Helios_Incident" "Cohesity_CreateOrUpdate_ServiceNow_Incident" "Cohesity_Delete_Incident_Blobs" "Cohesity_Restore_From_Last_Snapshot" "Cohesity_Send_Incident_Email")
-user_object_id="142355ec-a29b-40b7-81c3-e769c76b1756"
+keyvault_prefix="$producer_fun_prefix"
+playbook_names=("Cohesity_Close_Helios_Incident" "Cohesity_Restore_From_Last_Snapshot")
 
 # Get the Key Vault
 keyvault_name=$(az keyvault list --query "[?starts_with(name, '$keyvault_prefix')].{Name:name}" --output tsv | head -n 1)

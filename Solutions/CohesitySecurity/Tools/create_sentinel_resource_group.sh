@@ -1,10 +1,10 @@
 #!/bin/zsh
 
+# Description: This script creates a new resource group, Log Analytics workspace, and onboards the workspace to Azure Sentinel.
+
 SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 cd "$SCRIPTPATH"
-
-# Description: This script creates a new resource group, Log Analytics workspace, and onboards the workspace to Azure Sentinel.
 
 # Create a new resource group
 echo "Creating a new resource group..."

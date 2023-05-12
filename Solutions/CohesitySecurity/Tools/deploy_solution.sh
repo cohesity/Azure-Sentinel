@@ -1,5 +1,7 @@
 #!/bin/zsh
 
+# Description: This script deploys Azure Function Apps and Playbooks to a specified resource group.
+
 SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 cd "$SCRIPTPATH"

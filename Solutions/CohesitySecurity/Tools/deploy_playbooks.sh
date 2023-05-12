@@ -1,10 +1,10 @@
 #!/bin/zsh
 
+# Description: This script deploys Azure Sentinel playbooks for Cohesity
+
 SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 cd "$SCRIPTPATH"
-#
-# Description: This script deploys Azure Sentinel playbooks for Cohesity
 
 # Function to deploy the playbook
 deploy_playbook() {

@@ -1,11 +1,11 @@
 #!/bin/zsh
 
+# Description: This script assigns the "Microsoft Sentinel Playbook Operator" role
+# to a user, group, or service principal at the specified subscription scope.
+
 SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 cd "$SCRIPTPATH"
-#
-# Description: This script assigns the "Microsoft Sentinel Playbook Operator" role
-# to a user, group, or service principal at the specified subscription scope.
 
 # Set variables
 ROLE="Microsoft Sentinel Playbook Operator"

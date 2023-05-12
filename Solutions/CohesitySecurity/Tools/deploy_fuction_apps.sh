@@ -1,5 +1,8 @@
 #!/bin/zsh
 
+# Description: This script deploys Azure Sentinel resources to a specified resource group using a template file
+# and provided parameters.
+
 SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 cd "$SCRIPTPATH"

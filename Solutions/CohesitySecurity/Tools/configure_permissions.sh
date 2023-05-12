@@ -1,13 +1,13 @@
 #!/bin/zsh
 
+# Description: This script assigns Microsoft Sentinel Automation Contributor role
+# permissions to the app display name and role name.
+# It first retrieves the principal ID and role definition ID, then
+# grants the necessary permissions for the playbook.
+
 SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 cd "$SCRIPTPATH"
-#
-# Description: This script assigns Microsoft Sentinel Automation Contributor role
-# permissions to the specified app display name and role name.
-# It first retrieves the principal ID and role definition ID, then
-# grants the necessary permissions for the playbook.
 
 app_display_name="Azure Security Insights"
 role_name="Microsoft Sentinel Automation Contributor"
@@ -50,18 +50,20 @@ if [[ ! "$principal_id" =~ "No service principal found" ]] && [[ ! "$role_defini
     )
 
     # Send a batch request
+    # Generate a new UUID for the request name
+    request_name=$(uuidgen)
+
     az rest --method POST \
         --url "https://management.azure.com/batch?api-version=2020-06-01" \
         --headers "Content-Type=application/json" \
-        --body "{\"requests\":[{\"content\": $request_body, \"httpMethod\":\"PUT\", \"name\":\"ed804683-92f0-4609-a3a2-132de30860e9\", \"url\":\"https://management.azure.com/subscriptions/$subscription_id/resourceGroups/$resource_group/providers/Microsoft.Authorization/roleAssignments/$role_assignment_id?api-version=$api_version\"}]}"
+        --body "{\"requests\":[{\"content\": $request_body, \"httpMethod\":\"PUT\", \"name\":\"$request_name\", \"url\":\"https://management.azure.com/subscriptions/$subscription_id/resourceGroups/$resource_group/providers/Microsoft.Authorization/roleAssignments/$role_assignment_id?api-version=$api_version\"}]}"
             error_handler "Failed to send the batch request."
-
             echo "Permissions configured for the playbook."
-        else
-            echo "Error:"
-            echo "$principal_id"
-            echo "$role_definition_id"
-            exit 1
+else
+    echo "Error:"
+    echo "$principal_id"
+    echo "$role_definition_id"
+    exit 1
 fi
 
 cd -

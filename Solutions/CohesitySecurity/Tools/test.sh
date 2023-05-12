@@ -1,5 +1,8 @@
 #!/bin/zsh
 
+# Description: This script runs a series of tests: az.test.py, alert.test.py, and helios.test.py.
+# Each test is followed by an error handler to handle test failures.
+
 SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 cd "$SCRIPTPATH"

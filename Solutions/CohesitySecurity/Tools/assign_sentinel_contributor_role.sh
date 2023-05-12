@@ -1,10 +1,10 @@
 #!/bin/zsh
 
+# Description: This script assigns the "Microsoft Sentinel Contributor" role to a client in the specified workspace.
+
 SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 cd "$SCRIPTPATH"
-
-# Description: This script assigns the "Microsoft Sentinel Contributor" role to a client in the specified workspace.
 
 ROLE="Microsoft Sentinel Contributor"
 
