@@ -1,4 +1,5 @@
 #!/bin/zsh
+set -e
 
 # Description: This script grants "Get" permissions to the specified user and playbooks on the Key Vault.
 
@@ -6,17 +7,24 @@ SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 cd "$SCRIPTPATH"
 
+# Validate input variables
+if [[ -z "$producer_fun_prefix" ]]; then
+    echo "Error: producer_fun_prefix is not set. Please set the 'producer_fun_prefix' variable."
+    exit 1
+fi
+
+if [[ -z "$resource_group" ]]; then
+    echo "Error: Resource Group is not set. Please set the 'resource_group' variable."
+    exit 1
+fi
+
+
 # Set variables
 keyvault_prefix="$producer_fun_prefix"
 playbook_names=("Cohesity_Close_Helios_Incident" "Cohesity_Restore_From_Last_Snapshot")
 
 # Get the Key Vault
 keyvault_name=$(az keyvault list --query "[?starts_with(name, '$keyvault_prefix')].{Name:name}" --output tsv | head -n 1)
-error_handler "No Key Vault found with the specified prefix"
-
-# Grant the "Get" permission to the user
-az keyvault set-policy --name "$keyvault_name" --object-id "$user_object_id" --secret-permissions get
-
 
 # Print resource_group and workspace_name for later debug
 echo "During grant keyvault permission, Resource Group: $resource_group"
@@ -34,7 +42,6 @@ for playbook_name in "${playbook_names[@]}"; do
 
     # Grant the "Get" permission to the playbook
     az keyvault set-policy --name "$keyvault_name" --object-id "$playbook_object_id" --secret-permissions get
-    error_handler "Failed to grant permissions for playbook: $playbook_name"
 
     echo "Permissions granted for playbook: $playbook_name"
 done

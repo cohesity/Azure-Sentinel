@@ -1,4 +1,5 @@
 #!/bin/zsh
+set -e
 
 # Description: This script reads the configuration from a JSON file (cohesity.json) and generates a time-based UUID if needed.
 # It sets variables based on the JSON file contents and generates unique IDs for workspace_name and resource_group if they are not provided.
@@ -55,6 +56,5 @@ container_name=$(cat ../cohesity.json | jq '."container_name"' | sed 's/^"//g;s/
 location=$(cat ../cohesity.json | jq '."location"' | sed 's/^"//g;s/"$//g')
 subscription_id=$(cat ../cohesity.json | jq '."subscription_id"' | sed 's/^"//g;s/"$//g')
 object_id=$(cat ../cohesity.json | jq '."object_id"' | sed 's/^"//g;s/"$//g')
-user_object_id=$(cat ../cohesity.json | jq '."user_object_id"' | sed 's/^"//g;s/"$//g')
 
 cd -
