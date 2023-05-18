@@ -10,7 +10,7 @@ cd "$SCRIPTPATH"
 
 . ./assign_sentinel_playbook_operator_role.sh
 
-. ./configure_permissions.sh
+. ./assign_sentinel_automation_contributor_role.sh
 
 . ./grant_keyvault_permission.sh
 

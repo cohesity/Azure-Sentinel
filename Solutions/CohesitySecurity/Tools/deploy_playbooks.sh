@@ -1,5 +1,8 @@
 #!/bin/zsh
 set -e
+SCRIPT=$(realpath "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+cd "$SCRIPTPATH"
 
 # Description: This script deploys Azure Sentinel playbooks for Cohesity
 

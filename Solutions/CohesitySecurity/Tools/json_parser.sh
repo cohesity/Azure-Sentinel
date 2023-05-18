@@ -55,6 +55,5 @@ user_email=$(cat ../cohesity.json | jq '."user_email"' | sed 's/^"//g;s/"$//g')
 container_name=$(cat ../cohesity.json | jq '."container_name"' | sed 's/^"//g;s/"$//g')
 location=$(cat ../cohesity.json | jq '."location"' | sed 's/^"//g;s/"$//g')
 subscription_id=$(cat ../cohesity.json | jq '."subscription_id"' | sed 's/^"//g;s/"$//g')
-object_id=$(cat ../cohesity.json | jq '."object_id"' | sed 's/^"//g;s/"$//g')
 
 cd -
