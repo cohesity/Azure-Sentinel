@@ -6,10 +6,91 @@ Sentinel.
 """
 
 import json
+import re
 import requests
 import time
 import random
 import subprocess
+
+
+def run_az_command(command):
+    """
+    Runs an Azure CLI command and returns the output as a Python object.
+    """
+    result = subprocess.run(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        shell=True,
+    )
+    if result.returncode == 0:
+        return json.loads(result.stdout)
+    else:
+        print(f"Error: {result.stderr}")
+        return None
+
+
+def list_folder_content(
+    storage_account, storage_account_key, blob_container_name, folder_name
+):
+    """
+    Returns a list of blobs in the specified folder within the container.
+    """
+    folder_content_cmd = (
+        f"az storage blob list --account-name {storage_account} "
+        f"--account-key {storage_account_key} --container-name {blob_container_name} "
+        f"--prefix {folder_name} --output json"
+    )
+    return run_az_command(folder_content_cmd)
+
+
+def get_validated_storage_account(resource_group, name_prefix):
+    """
+    Returns the storage account name for the specified resource group if it
+    meets the specified conditions: only 1 storage account is present and
+    the name starts with the given name_prefix.
+
+    :param resource_group: The resource group to search for the storage account
+    :param name_prefix: The expected storage account name prefix
+    :return: The storage account name if it meets the conditions, otherwise None
+    """
+    storage_account_cmd = (
+        f"az storage account list "
+        f"--resource-group {resource_group} "
+        f"--output json"
+    )
+    storage_accounts = run_az_command(storage_account_cmd)
+
+    # Check if there is only one storage account in the resource group
+    if len(storage_accounts) != 1:
+        print(
+            f"Error: {resource_group} has {len(storage_accounts)} storage "
+            f"accounts. Exactly 1 storage account is expected."
+        )
+        return None
+
+    storage_account_name = storage_accounts[0]["name"]
+
+    # Check if the storage account name starts with the given name_prefix
+    if not storage_account_name.startswith(name_prefix):
+        print(
+            f"Error: The storage account name '{storage_account_name}' "
+            f"does not start with '{name_prefix}'."
+        )
+        return None
+
+    return storage_account_name
+
+
+def get_storage_account_key(resource_group, storage_account):
+    """
+    Returns the storage account key for the specified storage account.
+    """
+    storage_account_key_cmd = (
+        f"az storage account keys list --resource-group {resource_group} "
+        f'--account-name {storage_account} --query "[0].value" --output json'
+    )
+    return run_az_command(storage_account_key_cmd)
 
 
 def get_subscription_id():
@@ -24,9 +105,57 @@ def get_subscription_id():
     return subscription_id
 
 
-def incident_show(incident_id, resource_group, workspace_name):
+def get_snow_system_ids(incident_details):
     """
-    Returns the details of a specific incident in JSON format.
+    This function takes in incident details as input, extracts the 'labels' from the incident details,
+    and searches for the 'SNOW System ID' label among the labels. If the label is found, it extracts
+    the alphanumeric string that represents the System ID from the label using a regular expression.
+    The function returns a list of the extracted SNOW System IDs.
+
+    :param incident_details: A dictionary containing incident details
+    :type incident_details: dict
+
+    :return: A list of SNOW System IDs extracted from the incident details
+    :rtype: list
+    """
+    incident_details_dict = incident_details
+    labels = incident_details_dict["labels"]
+    snow_system_ids = [
+        # Search for a 32-character hexadecimal string (SNOW System ID) in the label's name
+        re.search(r"([a-fA-F0-9]{32})", label["labelName"]).group(1)
+        # Iterate through each label in the labels list
+        for label in labels
+        # Check if the label's name contains the "SNOW System ID" substring
+        if "SNOW System ID" in label["labelName"]
+    ]
+    return snow_system_ids
+
+
+def get_decoded_incident_details(incident_id, resource_group, workspace_name):
+    """
+    This function takes in an incident ID, resource group, and workspace name as input,
+    retrieves the incident details for the given incident ID using the 'get_incident_details' function,
+    decodes the incident details using UTF-8, and returns a dictionary of the decoded incident details.
+
+    :param incident_id: The ID of the incident to retrieve details for
+    :type incident_id: str
+    :param resource_group: The name of the resource group containing the workspace
+    :type resource_group: str
+    :param workspace_name: The name of the workspace containing the incident
+    :type workspace_name: str
+
+    :return: A dictionary containing the decoded incident details
+    :rtype: dict
+    """
+    incident_details = get_incident_details(
+        incident_id, resource_group, workspace_name
+    )
+    return json.loads(incident_details.decode("utf-8"))
+
+
+def get_incident_details(incident_id, resource_group, workspace_name):
+    """
+    Returns the details of a specific incident.
     """
     result = subprocess.run(
         [
@@ -43,8 +172,7 @@ def incident_show(incident_id, resource_group, workspace_name):
         ],
         stdout=subprocess.PIPE,
     )
-    jsObj = json.loads(result.stdout)
-    return jsObj
+    return result.stdout
 
 
 def run_playbook(
@@ -105,12 +233,16 @@ def run_playbook(
 
         time.sleep(5)  # Sleep for 5 seconds between status checks
 
-
     run_status = playbook_run["value"][0]["properties"]["status"]
-    assert run_status == "Succeeded", \
-        f"Assertion failed. Status: {run_status} " \
-        "Playbook Run:\n {json.dumps(playbook_run['value'][0], indent=2)}"
-    return result.returncode
+    run_id = playbook_run["value"][0]["name"]
+    client_tracking_id = playbook_run["value"][0]["properties"]["correlation"][
+        "clientTrackingId"
+    ]
+
+    assert (
+        run_status == "Succeeded"
+    ), f"Assertion failed. Status: {run_status}. Playbook Run: {json.dumps(playbook_run['value'][0], indent=2)}"
+    return result.returncode, run_id, client_tracking_id
 
 
 def get_one_incident_id(resource_group, workspace_name):
@@ -268,8 +400,13 @@ __all__ = [
     "get_incident_ids",
     "get_one_incident_id",
     "get_subscription_id",
-    "incident_show",
+    "get_incident_details",
     "run_playbook",
     "search_alert_id_in_incident",
     "get_azure_access_token",
+    "get_validated_storage_account",
+    "get_storage_account_key",
+    "list_folder_content",
+    "get_decoded_incident_details",
+    "get_snow_system_ids",
 ]
