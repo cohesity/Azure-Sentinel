@@ -1,6 +1,8 @@
 #!/bin/zsh
 set -e
 
+# Name: json_parser.sh
+
 # Description: This script reads the configuration from a JSON file (cohesity.json) and generates a time-based UUID if needed.
 # It sets variables based on the JSON file contents and generates unique IDs for workspace_name and resource_group if they are not provided.
 
@@ -45,15 +47,23 @@ producer_context=$(cat ../cohesity.json | jq '."producer_context"' | sed 's/^"//
 producer_fun_prefix=$(cat ../cohesity.json | jq '."producer_fun_prefix"' | sed 's/^"//g;s/"$//g')
 
 # Generate unique IDs for workspace_name and resource_group if not provided
-workspace_name=$(cat ../cohesity.json | jq '."workspace_name"' | sed 's/^"//g;s/"$//g')
-workspace_name=$(generate_time_uuid "$workspace_name" "automate-test")
-resource_group=$(cat ../cohesity.json | jq '."resource_group"' | sed 's/^"//g;s/"$//g')
-resource_group=$(generate_time_uuid "$resource_group" "automate-test")
+if [[ -z "$workspace_name" ]]; then
+    workspace_name=$(cat ../cohesity.json | jq '."workspace_name"' | sed 's/^"//g;s/"$//g')
+    workspace_name=$(generate_time_uuid "$workspace_name" "automate-test")
+fi
+
+if [[ -z "$resource_group" ]]; then
+    resource_group=$(cat ../cohesity.json | jq '."resource_group"' | sed 's/^"//g;s/"$//g')
+    resource_group=$(generate_time_uuid "$resource_group" "automate-test")
+fi
 
 # Read the remaining variables from cohesity.json
 user_email=$(cat ../cohesity.json | jq '."user_email"' | sed 's/^"//g;s/"$//g')
 container_name=$(cat ../cohesity.json | jq '."container_name"' | sed 's/^"//g;s/"$//g')
 location=$(cat ../cohesity.json | jq '."location"' | sed 's/^"//g;s/"$//g')
 subscription_id=$(cat ../cohesity.json | jq '."subscription_id"' | sed 's/^"//g;s/"$//g')
+service_now_username=$(cat ../cohesity.json | jq '."service_now_username"' | sed 's/^"//g;s/"$//g')
+service_now_password=$(cat ../cohesity.json | jq '."service_now_password"' | sed 's/^"//g;s/"$//g')
+service_now_instance_url=$(cat ../cohesity.json | jq '."service_now_instance_url"' | sed 's/^"//g;s/"$//g')
 
 cd -
