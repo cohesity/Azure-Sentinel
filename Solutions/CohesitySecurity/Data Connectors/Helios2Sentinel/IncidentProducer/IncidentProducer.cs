@@ -358,7 +358,7 @@ namespace Helios2Sentinel
 
         private static async Task<dynamic> FetchAnomalyAlerts(long startDateUsecs, long endDateUsecs, ILogger log)
         {
-            string requestUriString = $"https://helios-sandbox2.cohesity.com/mcm/alerts?alertCategoryList=kSecurity&alertStateList=kOpen&startDateUsecs={startDateUsecs}&endDateUsecs={endDateUsecs}";
+            string requestUriString = $"https://helios.cohesity.com/mcm/alerts?alertCategoryList=kSecurity&alertStateList=kOpen&startDateUsecs={startDateUsecs}&endDateUsecs={endDateUsecs}";
             log.LogInformation("requestUriString --> " + requestUriString);
             using HttpClient client = new();
             client.DefaultRequestHeaders.Accept.Clear();
@@ -373,7 +373,7 @@ namespace Helios2Sentinel
 
         private static async Task<dynamic> FetchDataHawkAlerts(long startDateUsecs, long endDateUsecs, ILogger log)
         {
-            string requestUriString = $"https://helios-sandbox2.cohesity.com/v2/mcm/alerts?startDateUsecs={startDateUsecs}&endDateUsecs={endDateUsecs}&alertCategoryList=kSecurity";
+            string requestUriString = $"https://helios.cohesity.com/v2/mcm/alerts?startDateUsecs={startDateUsecs}&endDateUsecs={endDateUsecs}&alertCategoryList=kSecurity";
             log.LogInformation("requestUriString --> " + requestUriString);
             using HttpClient client = new();
             client.DefaultRequestHeaders.Accept.Clear();
