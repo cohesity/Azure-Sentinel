@@ -16,6 +16,7 @@ using Newtonsoft.Json.Linq;
 using System.Xml.Linq;
 using static System.Net.Mime.MediaTypeNames;
 using System.Linq;
+using System.Globalization;
 
 namespace Helios2Sentinel
 {
@@ -25,35 +26,37 @@ namespace Helios2Sentinel
         private static readonly string azureWebJobsStorage = Environment.GetEnvironmentVariable("AzureWebJobsStorage");
         private static readonly object queueLock = new object();
         private static readonly string containerName = "cohesity-extra-parameters";
-        private static readonly string lastAnomalyRequestDetailsBlobKey = Environment.GetEnvironmentVariable("Workspace") + "\\last-anomaly-request-details";
-        private static readonly string lastDatahawkRequestDetailsBlobKey = Environment.GetEnvironmentVariable("Workspace") + "\\last-datahawk-request-details";
+        private static readonly string lastRequestDetailsBlobKey = Environment.GetEnvironmentVariable("Workspace") + "\\last-request-details";
         private static readonly HashSet<String> anomalyAlertPropertiesRequired =
-            new HashSet<String>() {"entityId", "cid", "jobId",
-                                    "jobInstanceId", "jobStartTimeUsecs",
-                                    "object", "source", "anomalyStrength"};
-        private static readonly HashSet<String> datahawkAlertPropertiesRequired = new HashSet<String>() {};
+            new HashSet<String>() {"entity_id", "cid", "job_id",
+                                    "job_instance_id", "job_start_time_usecs",
+                                    "object", "source", "anomaly_strength"};
+        private static readonly HashSet<String> datahawkAlertPropertiesRequired = new HashSet<String>() { };
         private static readonly HashSet<String> anomalyAlertPropertiesPersisted =
-            new HashSet<String>() {"entityId", "cid", "jobId",
-                                    "jobInstanceId", "jobStartTimeUsecs",
+            new HashSet<String>() {"entity_id", "cid", "job_id",
+                                    "job_instance_id", "job_start_time_usecs",
                                     "object"};
         private static readonly HashSet<String> datahawkAlertPropertiesPersisted = new HashSet<String>() { "object_id", "cluster_identifier" };
         private static readonly string anomalyIngestAlertName = "DataIngestAnomalyAlert";
         private static readonly string threatDetectionAlertName = "ThreatDetectionAlert";
         private static readonly string dataClassificationAlertName = "DataClassificationAlert";
-
+        private static readonly string[] allowedAlerts = new[] { anomalyIngestAlertName, threatDetectionAlertName, dataClassificationAlertName };
 
         // Encapsulates the details regarding the Helios request for alerts.
         // NOTE: This data is persisted on Azure Storage. Please make sure any
         // changes to the class do not break backward compatibility.
-        class RequestDetails {
+        class RequestDetails
+        {
             [JsonProperty("alertIds")]
             public HashSet<String> alertIds;
 
-            public string ToJson() {
+            public string ToJson()
+            {
                 return JsonConvert.SerializeObject(this);
             }
 
-            public static RequestDetails FromJson(string jsonStr) {
+            public static RequestDetails FromJson(string jsonStr)
+            {
                 return JsonConvert.DeserializeObject<RequestDetails>(jsonStr);
             }
         }
@@ -100,15 +103,16 @@ namespace Helios2Sentinel
 
         private static Task ParseAlertToQueue(
             [Queue("cohesity-incidents"), StorageAccount("AzureWebJobsStorage")] ICollector<string> outputQueueItem,
-            dynamic alert, ILogger log, string[] allowedAlerts, HashSet<String> alertPropertiesRequired, HashSet<String> alertPropertiesPersisted)
+            dynamic alert, ILogger log)
         {
             try
             {
-                string id = alert.id;
-                string alertName = (string)alert.alertDocument.alertName;
+                string id = alert.alert_id;
+                string alertName = (string)alert.alert_name;
 
                 // Validate that this is an anomaly alert.
-                if (Array.IndexOf(allowedAlerts, alertName) < 0) {
+                if (Array.IndexOf(allowedAlerts, alertName) < 0)
+                {
                     log.LogInformation("Skipping the alert with id " + id +
                                         " and name " + alertName +
                                         " as it is not a security alert");
@@ -118,33 +122,30 @@ namespace Helios2Sentinel
                 Dictionary<string, string> properties = new Dictionary<string, string>();
 
                 // Parse all the properties into a dictionary.
-                foreach (var prop in alert.propertyList)
+                foreach (var prop in alert.alert_variables)
                 {
                     properties[(string)prop.key] = (string)prop.value;
                 }
 
                 // Validate that all the required properties are present.
-                foreach (var key in alertPropertiesRequired)
+                foreach (var key in anomalyAlertPropertiesRequired)
                 {
-                    if (!properties.ContainsKey(key))
+                    if (alertName == anomalyIngestAlertName && !properties.ContainsKey(key))
                     {
                         log.LogError("Invalid alert: Property " + key + " not present in alert " + id);
                         return Task.CompletedTask;
                     }
                 }
 
-                string title = "Alert: " + alert.alertDocument.alertName;
-
-                string description = alert.alertDocument.alertDescription +
-                    ". Alert cause: " + alert.alertDocument.alertCause +
-                    ". Additional Info: " + alert.alertDocument.alertHelpText +
-                    ". Helios ID: " + alert.id;
-
+                // Validate that all the required properties are present. foreach (var key in datahawkAlertPropertiesRequired) { if (alertName != anomalyIngestAlertName && !properties.ContainsKey(key)) { log.LogError("Invalid alert: Property " + key + " not present in alert " + id); return Task.CompletedTask; } }
+                string title = "Alert: " + alertName;
+                string helpText = (alertName == anomalyIngestAlertName) ? (". Additional Info: " + alert.help) : ("");
+                string description = alert.description + ". Alert cause: " + alert.cause + helpText + ". Helios ID: " + alert.alert_id;
                 string severity;
 
                 if (alertName == anomalyIngestAlertName)
                 {
-                    long sev = long.Parse(properties["anomalyStrength"]);
+                    long sev = long.Parse(properties["anomaly_strength"]);
 
                     if (sev >= 70)
                     {
@@ -160,22 +161,28 @@ namespace Helios2Sentinel
                     }
 
                     description += ". Anomaly Strength: " + sev;
-                } else
+                }
+                else
                 {
                     severity = (string)alert.severity == "kCritical" ? "High" : "Medium";
                 }
 
-                // Persist the properties that maybe required for other operations in Sentinel.
-                foreach (var key in alertPropertiesPersisted)
+                // Persist the properties that maybe required for other operations in Sentinel. 
+                foreach (var key in anomalyAlertPropertiesPersisted.Union(datahawkAlertPropertiesPersisted))
                 {
                     try
                     {
-                        WriteData(id + "\\" + key, properties[key], log);
-                    } catch (Exception e)
+                        if (properties.ContainsKey(key))
+                        {
+                            WriteData(id + "\\" + key, properties[key], log);
+                        }
+                    }
+                    catch (Exception e)
                     {
                         log.LogError("Write Failed: " + e.Message + ": " + title);
                     }
                 }
+
                 dynamic incident = ConstructIncident(title, description, severity);
                 lock (queueLock)
                 {
@@ -259,7 +266,7 @@ namespace Helios2Sentinel
             HashSet<string> alertIds = new HashSet<string>();
             foreach (var alert in alerts)
             {
-                alertIds.Add((string)alert.id);
+                alertIds.Add((string)alert.alert_id);
             }
 
             RequestDetails details = new RequestDetails();
@@ -290,25 +297,23 @@ namespace Helios2Sentinel
             log.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
             long startDateUsecs = 0;
             long endDateUsecs = GetCurrentUnixTime();
-            HashSet<string> previousAnomalyAlertIds = new HashSet<string>();
-            HashSet<string> previousDatahawkAlertIds = new HashSet<string>();
+            HashSet<string> previousAlertIds = new HashSet<string>();
 
             try
             {
-                bool hasException = false;
+                bool noPreviousAlerts = false;
                 try
                 {
-                    previousAnomalyAlertIds = GetLastRequestAlertIds(lastAnomalyRequestDetailsBlobKey, log);
-                    previousDatahawkAlertIds = GetLastRequestAlertIds(lastDatahawkRequestDetailsBlobKey, log);
+                    previousAlertIds = GetLastRequestAlertIds(lastRequestDetailsBlobKey, log);
                 }
                 catch (Exception ex)
                 {
-                    hasException = true;
-                    log.LogError("lastRequestDetailsBlobKey Exception --> " + lastAnomalyRequestDetailsBlobKey + "---" + lastDatahawkRequestDetailsBlobKey);
+                    noPreviousAlerts = true;
+                    log.LogError("lastRequestDetailsBlobKey Exception --> " + lastRequestDetailsBlobKey);
                     log.LogError("Exception --> " + ex.Message);
                 }
 
-                if (hasException)
+                if (noPreviousAlerts)
                 {
                     startDateUsecs = GetFirstFetchStartTimeUsecs(log);
                 }
@@ -320,29 +325,18 @@ namespace Helios2Sentinel
                 log.LogInformation("startDateUsecs --> " + startDateUsecs);
                 log.LogInformation("endDateUsecs --> " + endDateUsecs.ToString());
 
-                dynamic anomalyAlerts = await FetchAnomalyAlerts(startDateUsecs, endDateUsecs, log);
-                dynamic datahawkAlerts = await FetchDataHawkAlerts(startDateUsecs, endDateUsecs, log);
+                dynamic alerts = await FetchAlerts(startDateUsecs, endDateUsecs, log);
 
                 try
                 {
-                    ProcessAlerts(anomalyAlerts, previousAnomalyAlertIds, lastAnomalyRequestDetailsBlobKey, outputQueueItem, log,
-                        new[] {anomalyIngestAlertName}, anomalyAlertPropertiesRequired, anomalyAlertPropertiesPersisted);
-                } catch (Exception ex)
+                    ProcessAlerts(alerts, previousAlertIds, lastRequestDetailsBlobKey, outputQueueItem, log);
+                }
+                catch (Exception ex)
                 {
                     log.LogError("Exception --> Process Anomaly Alerts " + ex.Message);
                 }
 
-                try
-                {
-                    ProcessAlerts(datahawkAlerts, previousDatahawkAlertIds, lastDatahawkRequestDetailsBlobKey, outputQueueItem, log,
-                        new[] {threatDetectionAlertName, dataClassificationAlertName}, datahawkAlertPropertiesRequired, datahawkAlertPropertiesPersisted);
-
-                } catch (Exception ex)
-                {
-                    log.LogError("Exception --> Process DatahawkAlerts " + ex.Message);
-                }
-
-                if (hasException)
+                if (noPreviousAlerts)
                 {
                     log.LogInformation("Adding welcome alert to the queue");
                     AddWelcomeAlertToQueue(outputQueueItem);
@@ -356,9 +350,9 @@ namespace Helios2Sentinel
             }
         }
 
-        private static async Task<dynamic> FetchAnomalyAlerts(long startDateUsecs, long endDateUsecs, ILogger log)
+        private static async Task<dynamic> FetchAlerts(long startDateUsecs, long endDateUsecs, ILogger log)
         {
-            string requestUriString = $"https://helios.cohesity.com/mcm/alerts?alertCategoryList=kSecurity&alertStateList=kOpen&startDateUsecs={startDateUsecs}&endDateUsecs={endDateUsecs}";
+            string requestUriString = $"https://helios-sandbox2.cohesity.com/v2/mcm/alert-service/alerts?startTimeUsecs={startDateUsecs}&maxAlerts=1000&endTimeUsecs={endDateUsecs}&alertCategoryList=Security";
             log.LogInformation("requestUriString --> " + requestUriString);
             using HttpClient client = new();
             client.DefaultRequestHeaders.Accept.Clear();
@@ -368,28 +362,20 @@ namespace Helios2Sentinel
             string jsonResult = reader.ReadToEnd();
             // log.LogInformation("Helios response: " + jsonResult);
 
-            return JsonConvert.DeserializeObject(jsonResult);
-        }
+            dynamic alerts =  JsonConvert.DeserializeObject(jsonResult);
 
-        private static async Task<dynamic> FetchDataHawkAlerts(long startDateUsecs, long endDateUsecs, ILogger log)
-        {
-            string requestUriString = $"https://helios.cohesity.com/v2/mcm/alerts?startDateUsecs={startDateUsecs}&endDateUsecs={endDateUsecs}&alertCategoryList=kSecurity";
-            log.LogInformation("requestUriString --> " + requestUriString);
-            using HttpClient client = new();
-            client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Add("apiKey", GetSecret("ApiKey", log));
-            await using Stream stream = await client.GetStreamAsync(requestUriString);
-            StreamReader reader = new StreamReader(stream);
-            string jsonResult = reader.ReadToEnd();
-            // log.LogInformation("Helios response: " + jsonResult);
-            var alertsObj = (JObject)JsonConvert.DeserializeObject(jsonResult);
-            dynamic alerts = alertsObj["alertsList"];
+            // convert scientific notation ids to 19 digit integers
+            foreach(dynamic alert in alerts) {
+                if (alert.alert_id.ToString().ToLower().Contains('e')) {
+                    alert.alert_id = decimal.Parse(alert.alert_id, NumberStyles.Float).Substring(0, 19);
+                }
+            }
 
             return alerts;
         }
 
         private static void ProcessAlerts(dynamic alerts, HashSet<string> previousAlertIds, string blobKey, ICollector<string> outputQueueItem,
-            ILogger log, string[] allowedAlerts, HashSet<String> alertPropertiesRequired, HashSet<String> alertPropertiesPersisted)
+            ILogger log)
         {
             var tasks = new List<Task>();
 
@@ -409,7 +395,7 @@ namespace Helios2Sentinel
 
                 tasks.Add(Task.Run(async () =>
                 {
-                    await ParseAlertToQueue(outputQueueItem, alert, log, allowedAlerts, alertPropertiesRequired, alertPropertiesPersisted);
+                    await ParseAlertToQueue(outputQueueItem, alert, log);
                 }));
             }
 
