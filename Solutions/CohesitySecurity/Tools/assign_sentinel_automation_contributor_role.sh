@@ -62,11 +62,23 @@ if [[ ! "$principal_id" =~ "No service principal found" ]] && [[ ! "$role_defini
         '{"properties": {"roleDefinitionId": $roleDefinitionId, "principalId": $principalId}}'
     )
 
-    az rest --method PUT \
+    echo "Debug: Request Body: $request_body"
+
+    # Try to assign the role
+    role_assignment_result=$(az rest --method PUT \
         --url "https://management.azure.com/subscriptions/$subscription_id/resourceGroups/$resource_group/providers/Microsoft.Authorization/roleAssignments/$role_assignment_id?api-version=$api_version" \
         --headers "Content-Type=application/json" \
-        --body "$request_body"
-            echo "Permissions configured for the playbook."
+        --body "$request_body" 2>&1) || {
+            echo "Error occurred during role assignment:"
+            echo "$role_assignment_result"
+        }
+
+    # If the assignment already exists, handle the error
+    if [[ $role_assignment_result == *"RoleAssignmentExists"* ]]; then
+        echo "The role assignment already exists. Skipping."
+    else
+        echo "Permissions configured for the playbook."
+    fi
 else
     echo "Error:"
     echo "$principal_id"
