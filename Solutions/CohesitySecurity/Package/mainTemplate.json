@@ -30,31 +30,19 @@
     }
   },
   "variables": {
-<<<<<<< Updated upstream
-    "solutionId": "cohesitydev1592001764720.cohesity_sentinel_data_connector",
-    "_solutionId": "[variables('solutionId')]",
-    "email": "support@cohesity.com",
-    "_email": "[variables('email')]",
-    "workspaceResourceId": "[resourceId('microsoft.OperationalInsights/Workspaces', parameters('workspace'))]",
-=======
     "email": "support@cohesity.com",
     "_email": "[variables('email')]",
     "_solutionName": "CohesitySecurity",
     "_solutionVersion": "3.1.0",
     "solutionId": "cohesitydev1592001764720.cohesity_sentinel_data_connector",
     "_solutionId": "[variables('solutionId')]",
->>>>>>> Stashed changes
     "uiConfigId1": "CohesityDataConnector",
     "_uiConfigId1": "[variables('uiConfigId1')]",
     "dataConnectorContentId1": "CohesityDataConnector",
     "_dataConnectorContentId1": "[variables('dataConnectorContentId1')]",
     "dataConnectorId1": "[extensionResourceId(resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspace')), 'Microsoft.SecurityInsights/dataConnectors', variables('_dataConnectorContentId1'))]",
     "_dataConnectorId1": "[variables('dataConnectorId1')]",
-<<<<<<< Updated upstream
-    "dataConnectorTemplateSpecName1": "[concat(parameters('workspace'),'-dc-',uniquestring(variables('_dataConnectorContentId1')))]",
-=======
     "dataConnectorTemplateSpecName1": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/',concat(parameters('workspace'),'-dc-',uniquestring(variables('_dataConnectorContentId1'))))]",
->>>>>>> Stashed changes
     "dataConnectorVersion1": "1.0.0",
     "Cohesity_Send_Incident_Email": "Cohesity_Send_Incident_Email",
     "_Cohesity_Send_Incident_Email": "[variables('Cohesity_Send_Incident_Email')]",
@@ -62,13 +50,9 @@
     "playbookContentId1": "Cohesity_Send_Incident_Email",
     "_playbookContentId1": "[variables('playbookContentId1')]",
     "playbookId1": "[resourceId('Microsoft.Logic/workflows', variables('playbookContentId1'))]",
-<<<<<<< Updated upstream
-    "playbookTemplateSpecName1": "[concat(parameters('workspace'),'-pl-',uniquestring(variables('_playbookContentId1')))]",
-=======
     "playbookTemplateSpecName1": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/',concat(parameters('workspace'),'-pl-',uniquestring(variables('_playbookContentId1'))))]",
     "workspaceResourceId": "[resourceId('microsoft.OperationalInsights/Workspaces', parameters('workspace'))]",
     "_playbookcontentProductId1": "[concat(take(variables('_solutionId'),50),'-','pl','-', uniqueString(concat(variables('_solutionId'),'-','Playbook','-',variables('_playbookContentId1'),'-', variables('playbookVersion1'))))]",
->>>>>>> Stashed changes
     "blanks": "[replace('b', 'b', '')]",
     "Cohesity_Restore_From_Last_Snapshot": "Cohesity_Restore_From_Last_Snapshot",
     "_Cohesity_Restore_From_Last_Snapshot": "[variables('Cohesity_Restore_From_Last_Snapshot')]",
@@ -76,49 +60,33 @@
     "playbookContentId2": "Cohesity_Restore_From_Last_Snapshot",
     "_playbookContentId2": "[variables('playbookContentId2')]",
     "playbookId2": "[resourceId('Microsoft.Logic/workflows', variables('playbookContentId2'))]",
-<<<<<<< Updated upstream
-    "playbookTemplateSpecName2": "[concat(parameters('workspace'),'-pl-',uniquestring(variables('_playbookContentId2')))]",
-=======
     "playbookTemplateSpecName2": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/',concat(parameters('workspace'),'-pl-',uniquestring(variables('_playbookContentId2'))))]",
     "_playbookcontentProductId2": "[concat(take(variables('_solutionId'),50),'-','pl','-', uniqueString(concat(variables('_solutionId'),'-','Playbook','-',variables('_playbookContentId2'),'-', variables('playbookVersion2'))))]",
->>>>>>> Stashed changes
     "Cohesity_Close_Helios_Incident": "Cohesity_Close_Helios_Incident",
     "_Cohesity_Close_Helios_Incident": "[variables('Cohesity_Close_Helios_Incident')]",
     "playbookVersion3": "1.0",
     "playbookContentId3": "Cohesity_Close_Helios_Incident",
     "_playbookContentId3": "[variables('playbookContentId3')]",
     "playbookId3": "[resourceId('Microsoft.Logic/workflows', variables('playbookContentId3'))]",
-<<<<<<< Updated upstream
-    "playbookTemplateSpecName3": "[concat(parameters('workspace'),'-pl-',uniquestring(variables('_playbookContentId3')))]",
-=======
     "playbookTemplateSpecName3": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/',concat(parameters('workspace'),'-pl-',uniquestring(variables('_playbookContentId3'))))]",
     "_playbookcontentProductId3": "[concat(take(variables('_solutionId'),50),'-','pl','-', uniqueString(concat(variables('_solutionId'),'-','Playbook','-',variables('_playbookContentId3'),'-', variables('playbookVersion3'))))]",
->>>>>>> Stashed changes
     "Cohesity_CreateOrUpdate_ServiceNow_Incident": "Cohesity_CreateOrUpdate_ServiceNow_Incident",
     "_Cohesity_CreateOrUpdate_ServiceNow_Incident": "[variables('Cohesity_CreateOrUpdate_ServiceNow_Incident')]",
     "playbookVersion4": "1.0",
     "playbookContentId4": "Cohesity_CreateOrUpdate_ServiceNow_Incident",
     "_playbookContentId4": "[variables('playbookContentId4')]",
     "playbookId4": "[resourceId('Microsoft.Logic/workflows', variables('playbookContentId4'))]",
-<<<<<<< Updated upstream
-    "playbookTemplateSpecName4": "[concat(parameters('workspace'),'-pl-',uniquestring(variables('_playbookContentId4')))]",
-=======
     "playbookTemplateSpecName4": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/',concat(parameters('workspace'),'-pl-',uniquestring(variables('_playbookContentId4'))))]",
     "_playbookcontentProductId4": "[concat(take(variables('_solutionId'),50),'-','pl','-', uniqueString(concat(variables('_solutionId'),'-','Playbook','-',variables('_playbookContentId4'),'-', variables('playbookVersion4'))))]",
->>>>>>> Stashed changes
     "Cohesity_Delete_Incident_Blobs": "Cohesity_Delete_Incident_Blobs",
     "_Cohesity_Delete_Incident_Blobs": "[variables('Cohesity_Delete_Incident_Blobs')]",
     "playbookVersion5": "1.0",
     "playbookContentId5": "Cohesity_Delete_Incident_Blobs",
     "_playbookContentId5": "[variables('playbookContentId5')]",
     "playbookId5": "[resourceId('Microsoft.Logic/workflows', variables('playbookContentId5'))]",
-<<<<<<< Updated upstream
-    "playbookTemplateSpecName5": "[concat(parameters('workspace'),'-pl-',uniquestring(variables('_playbookContentId5')))]"
-=======
     "playbookTemplateSpecName5": "[concat(parameters('workspace'),'/Microsoft.SecurityInsights/',concat(parameters('workspace'),'-pl-',uniquestring(variables('_playbookContentId5'))))]",
     "_playbookcontentProductId5": "[concat(take(variables('_solutionId'),50),'-','pl','-', uniqueString(concat(variables('_solutionId'),'-','Playbook','-',variables('_playbookContentId5'),'-', variables('playbookVersion5'))))]",
     "_solutioncontentProductId": "[concat(take(variables('_solutionId'),50),'-','sl','-', uniqueString(concat(variables('_solutionId'),'-','Solution','-',variables('_solutionId'),'-', variables('_solutionVersion'))))]"
->>>>>>> Stashed changes
   },
   "resources": [
     {
@@ -148,11 +116,7 @@
         "[resourceId('Microsoft.Resources/templateSpecs', variables('dataConnectorTemplateSpecName1'))]"
       ],
       "properties": {
-<<<<<<< Updated upstream
-        "description": "CohesitySecurity data connector with template version 2.0.0",
-=======
         "description": "CohesitySecurity data connector with template version 3.1.0",
->>>>>>> Stashed changes
         "mainTemplate": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
           "contentVersion": "[variables('dataConnectorVersion1')]",
@@ -450,11 +414,7 @@
         "[resourceId('Microsoft.Resources/templateSpecs', variables('playbookTemplateSpecName1'))]"
       ],
       "properties": {
-<<<<<<< Updated upstream
-        "description": "My_Cohesity_Send_Incident_Email Playbook with template version 2.0.0",
-=======
         "description": "My_Cohesity_Send_Incident_Email Playbook with template version 3.1.0",
->>>>>>> Stashed changes
         "mainTemplate": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
           "contentVersion": "[variables('playbookVersion1')]",
@@ -710,11 +670,7 @@
         "[resourceId('Microsoft.Resources/templateSpecs', variables('playbookTemplateSpecName2'))]"
       ],
       "properties": {
-<<<<<<< Updated upstream
-        "description": "My_Cohesity_Restore_From_Last_Snapshot Playbook with template version 2.0.0",
-=======
         "description": "My_Cohesity_Restore_From_Last_Snapshot Playbook with template version 3.1.0",
->>>>>>> Stashed changes
         "mainTemplate": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
           "contentVersion": "[variables('playbookVersion2')]",
@@ -1164,11 +1120,7 @@
         "[resourceId('Microsoft.Resources/templateSpecs', variables('playbookTemplateSpecName3'))]"
       ],
       "properties": {
-<<<<<<< Updated upstream
-        "description": "My_Cohesity_Close_Helios_Incident Playbook with template version 2.0.0",
-=======
         "description": "My_Cohesity_Close_Helios_Incident Playbook with template version 3.1.0",
->>>>>>> Stashed changes
         "mainTemplate": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
           "contentVersion": "[variables('playbookVersion3')]",
@@ -1448,11 +1400,7 @@
         "[resourceId('Microsoft.Resources/templateSpecs', variables('playbookTemplateSpecName4'))]"
       ],
       "properties": {
-<<<<<<< Updated upstream
-        "description": "My_Cohesity_CreateOrUpdate_ServiceNow_Incident Playbook with template version 2.0.0",
-=======
         "description": "My_Cohesity_CreateOrUpdate_ServiceNow_Incident Playbook with template version 3.1.0",
->>>>>>> Stashed changes
         "mainTemplate": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
           "contentVersion": "[variables('playbookVersion4')]",
@@ -2240,11 +2188,7 @@
         "[resourceId('Microsoft.Resources/templateSpecs', variables('playbookTemplateSpecName5'))]"
       ],
       "properties": {
-<<<<<<< Updated upstream
-        "description": "My_Cohesity_Delete_Incident_Blobs Playbook with template version 2.0.0",
-=======
         "description": "My_Cohesity_Delete_Incident_Blobs Playbook with template version 3.1.0",
->>>>>>> Stashed changes
         "mainTemplate": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
           "contentVersion": "[variables('playbookVersion5')]",
@@ -2516,11 +2460,6 @@
       "apiVersion": "2022-01-01-preview",
       "location": "[parameters('workspace-location')]",
       "properties": {
-<<<<<<< Updated upstream
-        "version": "2.0.0",
-        "kind": "Solution",
-        "contentSchemaVersion": "2.0.0",
-=======
         "version": "3.1.0",
         "kind": "Solution",
         "contentSchemaVersion": "3.0.0",
@@ -2531,7 +2470,6 @@
         "contentProductId": "[variables('_solutioncontentProductId')]",
         "id": "[variables('_solutioncontentProductId')]",
         "icon": "<img src=\"https://raw.githubusercontent.com/Azure/Azure-Sentinel/master/Logos/Cohesity-Logo.svg\" width=\"75px\"height=\"75px\">",
->>>>>>> Stashed changes
         "contentId": "[variables('_solutionId')]",
         "parentId": "[variables('_solutionId')]",
         "source": {
