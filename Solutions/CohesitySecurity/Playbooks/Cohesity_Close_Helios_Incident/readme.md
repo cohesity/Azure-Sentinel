@@ -10,7 +10,7 @@ __Remember__: It works only if you have installed the [Function Apps](https://gi
 * __Playbook Name:__ Enter the playbook name here.
 
 ## Post-deployment Instructions
-1. The user who runs the playbook must have the role _Microsoft Sentinel Playbook Operator_. To assign the role:
+1. The user who runs the playbook must have the role Microsoft Sentinel Playbook Operator. To assign the role:
 * Under the _Subscriptions_ tab from the _Home_ page, choose your subscription name.
 * Choose the _Access Control (IAM)_ option from the left pane.
 * Click on _Add > Add Role Assignment_ and add _Microsoft Sentinel Playbook Operator_ to the user.

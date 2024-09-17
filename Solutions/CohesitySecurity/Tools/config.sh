@@ -8,10 +8,9 @@ SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 cd "$SCRIPTPATH"
 
-. ./assign_sentinel_playbook_operator_role.sh
-
+. ./assign_roles_and_permissions.sh
 . ./assign_sentinel_automation_contributor_role.sh
-
-. ./grant_keyvault_permission.sh
+. ./configure_servicenow_connection.sh
+. ./update_azure_blob.sh
 
 cd -
