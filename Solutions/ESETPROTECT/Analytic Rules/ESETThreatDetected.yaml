@@ -7,6 +7,9 @@ requiredDataConnectors:
   - connectorId: ESETPROTECT
     dataTypes:
       - ESETPROTECT
+  - connectorId: SyslogAma
+    datatypes:
+      - Syslog
 queryFrequency: 5m
 queryPeriod: 5m
 triggerOperator: gt
@@ -23,7 +26,7 @@ entityMappings:
   - entityType: Account
     fieldMappings:
       - identifier: FullName
-        columnName: srcUserName
+        columnName: SrcUserName
   - entityType: Host
     fieldMappings:
       - identifier: FullName
@@ -38,5 +41,5 @@ entityMappings:
         columnName: FileHashAlgo
       - identifier: Value
         columnName: FileHashSha1
-version: 1.0.1
+version: 1.0.3
 kind: Scheduled

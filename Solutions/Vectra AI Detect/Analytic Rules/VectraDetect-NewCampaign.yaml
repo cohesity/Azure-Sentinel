@@ -8,6 +8,12 @@ requiredDataConnectors:
   - connectorId: AIVectraDetect
     dataTypes:
       - CommonSecurityLog
+  - connectorId: AIVectraDetectAma
+    dataTypes:
+      - CommonSecurityLog
+  - connectorId: CefAma
+    dataTypes:
+      - CommonSecurityLog
 queryFrequency: 5m
 queryPeriod: 5m
 triggerOperator: gt
@@ -16,6 +22,8 @@ tactics:
   - LateralMovement
   - CommandAndControl
 relevantTechniques:
+  - T1021
+  - T1071
 query: |
   CommonSecurityLog
   | where DeviceVendor == "Vectra Networks"
@@ -37,7 +45,7 @@ entityMappings:
 alertDetailsOverride:
   alertDisplayNameFormat: Vectra AI - New Campaign Detected
   alertDescriptionFormat: |
-    A new campaign named {{ Activity }} has been detected (reason is {{reason}})
+    A new campaign named {{Activity}} has been detected (reason is {{reason}})
   alertDynamicProperties:
     - alertProperty: AlertLink
       value: vectra_URL
@@ -53,8 +61,8 @@ incidentConfiguration:
     lookbackDuration: 7d
     matchingMethod: AllEntities
 customDetails:
-  CampaignName: Activity
+  CampaignName: Activity 
   CampaignReason: reason 
   CampaignSourceHost: SourceHostName
-version: 1.1.5
+version: 1.2.0
 kind: Scheduled
