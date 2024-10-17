@@ -2,7 +2,8 @@ Import-Module powershell-yaml
 
 Write-Host 'It is recommended to use createSolutionV3.ps1 file for solution packaging'
 $jsonConversionDepth = 50
-$path = "$PSScriptRoot\input"
+$RepoRoot = Split-path -Parent $PSScriptRoot | Split-Path -Parent | Split-Path -Parent
+$path = Join-Path -Path $RepoRoot -ChildPath "Solutions" -AdditionalChildPath "CohesitySecurity", "Data"
 $mainTemplateArtifact = [PSCustomObject]@{
     name = "DefaultTemplate";
     type = "Template"
@@ -155,6 +156,7 @@ foreach ($inputFile in $(Get-ChildItem $path)) {
 
     $contentToImport = Get-Content -Raw $inputJsonPath | Out-String | ConvertFrom-Json
     $basePath = $(if ($contentToImport.BasePath) { $contentToImport.BasePath + "/" } else { "https://raw.githubusercontent.com/Azure/Azure-Sentinel/master/" })
+    $basePath = Join-Path -Path $RepoRoot -ChildPath $basePath
 
     # Content Counters - (for adding numbering to each item)
     $analyticRuleCounter = 1
@@ -1535,7 +1537,7 @@ foreach ($inputFile in $(Get-ChildItem $path)) {
                         }
                         $connectorDataType = $(getConnectorDataTypes $connectorData.dataTypes)
                         $isParserAvailable = $($contentToImport.Parsers -and ($contentToImport.Parsers.Count -gt 0))
-                        $connectorDescriptionText = "This Solution installs the data connector for $solutionName. You can get $solutionName $connectorDataType data in your Microsoft Sentinel workspace. After installing the solution, configure and enable this data connector by following guidance in Manage solution view."
+                        $connectorDescriptionText = "This product integrates Cohesity Helios with Microsoft Sentinel to stay updated with the security events from your Cohesity environment and immediately respond to a ransomware attack or an anomaly."
                         $parserText = "The Solution installs a parser that transforms the ingested data into Microsoft Sentinel normalized format. The normalized format enables better correlation of different types of data from different data sources to drive end-to-end outcomes seamlessly in security monitoring, hunting, incident investigation and response scenarios in Microsoft Sentinel."
 
                         $baseDataConnectorStep = [PSCustomObject] @{
