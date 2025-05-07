@@ -6,11 +6,11 @@ Sentinel.
 """
 
 import json
+import random
 import re
 import requests
-import time
-import random
 import subprocess
+import time
 
 
 def run_az_command(command):
@@ -301,22 +301,37 @@ def search_alert_id_in_incident(alert_id, resource_group, workspace_name):
     contains the specified alert ID.
     """
     query = "[?contains(description, '" + alert_id + "')]"
+    command = [
+        "az",
+        "sentinel",
+        "incident",
+        "list",
+        "--resource-group",
+        resource_group,
+        "--workspace-name",
+        workspace_name,
+        "--query",
+        query,
+    ]
+
+    # Print debug info
+    print(f"Executing command: {' '.join(command)}")
+
     result = subprocess.run(
-        [
-            "az",
-            "sentinel",
-            "incident",
-            "list",
-            "--resource-group",
-            resource_group,
-            "--workspace-name",
-            workspace_name,
-            "--query",
-            query,
-        ],
+        command,
         stdout=subprocess.PIPE,
     )
-    return json.loads(result.stdout) if json.loads(result.stdout) else None
+
+    # Print debug info
+    print(f"Command result: {result.stdout.decode()}")
+
+    parsed_result = json.loads(result.stdout)
+
+    if not parsed_result:
+        print("No incident found containing the specified alert ID.")
+        return None
+
+    return parsed_result
 
 
 def get_latest_playbook_run(
