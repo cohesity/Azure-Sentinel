@@ -38,7 +38,7 @@ namespace IncidentConsumer
         private static string GetSecret(string secretName)
         {
             var kvUri = $"https://{IncidentConsumer.keyVaultName}.vault.azure.net";
-            if (clientId == "")
+            if (clientId == null)
             {
                 var defaultSecretClient = new SecretClient(new Uri(kvUri), new DefaultAzureCredential());
                 return defaultSecretClient.GetSecret(secretName).Value.Value;
