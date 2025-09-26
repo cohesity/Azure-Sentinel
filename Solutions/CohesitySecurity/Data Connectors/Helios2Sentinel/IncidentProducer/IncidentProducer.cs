@@ -438,7 +438,7 @@ namespace Helios2Sentinel
             var kvUri = $"https://{IncidentProducer.keyVaultName}.vault.azure.net";
             try
             {
-                if (clientId == "your ClientId")
+                if (clientId == "")
                 {
                     log.LogInformation("ClientId is not set hence using DefaultAzureCredential");
                     var defaultSecretClient = new SecretClient(new Uri(kvUri), new DefaultAzureCredential());
