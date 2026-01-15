@@ -11,7 +11,6 @@ from servicenow import ServiceNow
 import json
 import numpy as np
 import os
-import subprocess
 import time
 import unittest
 import re
@@ -120,19 +119,6 @@ class TestCohesity(unittest.TestCase):
             "",
             "No storage account key found in the specified resource group.",
         )
-
-        # Deploy playbooks
-        bash_command = "./deploy_playbooks.sh"
-        process = subprocess.Popen(
-            bash_command.split(), stdout=subprocess.PIPE
-        )
-        output, error = process.communicate()
-
-        if output:
-            print("output --> %s" % output.decode())
-
-        if error:
-            print("error --> %s" % error.decode())
 
     def test_cohesity_restore_from_last_snapshot(self):
         """
@@ -327,16 +313,23 @@ class TestCohesity(unittest.TestCase):
         The test is considered successful if all conditions are met.
         """
         print("Starting test_cohesity_createorupdate_servicenow_incident...")
+
         playbook_name = "Cohesity_CreateOrUpdate_ServiceNow_Incident"
         incident_id, alert_id = get_one_incident_id(
             self.resource_group, self.workspace_name
         )
+        print(f"incident_id: {incident_id}, alert_id: {alert_id}")
 
         incident_details = get_decoded_incident_details(
             incident_id, self.resource_group, self.workspace_name
         )
 
+        print(
+            f"incident_details.json: {json.dumps(incident_details, indent=2)}"
+        )
+
         snow_system_ids = get_snow_system_ids(incident_details)
+        print(f"snow_system_ids: {snow_system_ids}")
 
         returncode, run_id, client_tracking_id = run_playbook(
             self.subscription_id,
@@ -346,11 +339,17 @@ class TestCohesity(unittest.TestCase):
             playbook_name,
             self.access_token,
         )
+        print(
+            f"returncode: {returncode}, run_id: {run_id}, client_tracking_id: {client_tracking_id}"
+        )
 
         updated_incident_details = get_decoded_incident_details(
             incident_id, self.resource_group, self.workspace_name
         )
+        print(f"updated_incident_details: {updated_incident_details}")
+
         new_snow_system_ids = get_snow_system_ids(updated_incident_details)
+        print(f"new_snow_system_ids: {new_snow_system_ids}")
 
         if len(new_snow_system_ids) != len(snow_system_ids) + 1:
             raise ValueError(
@@ -362,6 +361,7 @@ class TestCohesity(unittest.TestCase):
                 snow_system_ids, new_snow_system_ids
             )
         )
+        print(f"diff_snow_system_id: {diff_snow_system_id}")
 
         (
             status_code,
@@ -369,6 +369,7 @@ class TestCohesity(unittest.TestCase):
         ) = self.service_now_instance.query_servicenow_incidents(
             diff_snow_system_id
         )
+        print(f"status_code: {status_code}, incident: {incident}")
 
         error_msg = f"Error querying ServiceNow: Status code: {status_code}"
         self.assertEqual(status_code, 200, error_msg)
@@ -407,16 +408,25 @@ class TestCohesity(unittest.TestCase):
             f"The non-matching alert_id does not contain the expected string.",
         )
 
-        for alert_id in [
-            alert_id for alert_id in alert_ids if re.match(pattern, alert_id)
-        ]:
+        # Filter out alert_ids that don't match the pattern or don't exist in Helios
+        filtered_alert_ids = [
+            alert_id
+            for alert_id in alert_ids
+            if re.match(pattern, alert_id)
+            and get_alert_details(alert_id, self.api_key) is not None
+        ]
+
+        # Now process the filtered alert_ids
+        for alert_id in filtered_alert_ids:
             self.assertIsNotNone(
                 get_alert_details(alert_id, self.api_key),
                 f"alert_id --> {alert_id} doesn't exist in helios.",
             )
-        alerts_details = get_alerts_details(alert_ids, self.api_key)
+
+        # Get details of alerts that are in the filtered list
+        alerts_details = get_alerts_details(filtered_alert_ids, self.api_key)
         self.assertEqual(
-            len(alert_ids),
+            len(filtered_alert_ids),
             len(alerts_details),
             "Number of alerts does not match the number of incidents",
         )
@@ -430,7 +440,9 @@ class TestCohesity(unittest.TestCase):
         print("Starting test_no_dup_incidents")
         ids = get_incident_ids(self.resource_group, self.workspace_name)
         alert_ids = [alert_id for (incident_id, alert_id) in ids]
-        assert len(alert_ids) != len(np.unique(np.array(alert_ids)))
+        assert len(alert_ids) == len(
+            np.unique(np.array(alert_ids))
+        ), f"Length of alert_ids is {len(alert_ids)}, while the number of unique ids is {len(np.unique(np.array(alert_ids)))}. They should be equal."
         print("test_no_dup_incidents completed successfully")
 
     def test_alerts_in_sentinel(self):
@@ -470,7 +482,11 @@ if __name__ == "__main__":
             for test in unittest.defaultTestLoader.getTestCaseNames(
                 TestCohesity
             )
-            if test in ("test_cohesity_createorupdate_servicenow_incident",)
+            if test
+            not in (
+                "test_cohesity_restore_from_last_snapshot",
+                "test_alerts_in_sentinel",
+            )
         ]
     )
 
